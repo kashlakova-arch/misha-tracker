@@ -1,0 +1,3413 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FBF6EC">
+<meta name="description" content="Спокойное наблюдение за здоровьем собаки: ежедневная проверка и дневник самочувствия.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Misha">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon-180.png">
+<title>Misha Health Tracker</title>
+<style>
+  :root{
+    color-scheme: light;
+    --cream:#FBF6EC;
+    --cream-deep:#F4EDDF;
+    --card:#FFFDF8;
+    --ink:#3A362F;
+    --ink-soft:#5D564B;
+    --muted:#8A8172;
+    --line:#E9E0CE;
+    --sage:#7E9471;
+    --sage-deep:#5F7455;
+    --sage-soft:#EBF0E5;
+    --amber:#C4954A;
+    --amber-deep:#9A7231;
+    --amber-soft:#F7EEDA;
+    --terra:#B4705E;
+    --terra-deep:#8E5344;
+    --terra-soft:#F5E3DC;
+    --radius:20px;
+    --shadow:0 1px 2px rgba(58,54,47,.05), 0 8px 24px rgba(58,54,47,.06);
+    --tap:60px;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size:1.0625rem;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior-y:none;
+  }
+  button{font:inherit;color:inherit;margin:0}
+  h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+  :focus-visible{outline:2px solid var(--sage-deep);outline-offset:2px}
+
+  #app{
+    max-width:520px;
+    margin:0 auto;
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .screen{display:none;flex-direction:column;flex:1;min-height:100vh;min-height:100dvh}
+  .screen.active{display:flex}
+
+  /* ——— шапка ——— */
+  .top{
+    display:flex;align-items:center;gap:12px;
+    padding:calc(env(safe-area-inset-top) + 16px) 20px 8px;
+  }
+  .top .spacer{flex:1}
+  .top h1{font-size:1.1875rem}
+  .top .sub{font-size:.8125rem;color:var(--muted);letter-spacing:.02em}
+
+  .iconbtn{
+    width:44px;height:44px;flex:none;
+    border:1px solid var(--line);
+    background:var(--card);
+    border-radius:14px;
+    display:grid;place-items:center;
+    cursor:pointer;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .iconbtn:active{transform:scale(.96);background:var(--cream-deep)}
+  .iconbtn svg{width:20px;height:20px;stroke:var(--ink-soft);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ——— контент ——— */
+  .body{flex:1;padding:8px 20px 16px;display:flex;flex-direction:column;gap:16px}
+  .body.center{justify-content:center}
+  .foot{
+    padding:12px 20px calc(env(safe-area-inset-bottom) + 20px);
+    display:flex;flex-direction:column;gap:10px;
+    background:linear-gradient(to top, var(--cream) 62%, rgba(251,246,236,0));
+    position:sticky;bottom:0;
+  }
+
+  /* ——— кнопки ——— */
+  .btn{
+    min-height:var(--tap);
+    width:100%;
+    border-radius:var(--radius);
+    border:1px solid transparent;
+    padding:16px 20px;
+    font-size:1.0625rem;font-weight:600;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    text-align:center;text-decoration:none;
+    transition:transform .1s ease, opacity .15s ease, background .15s ease;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn.primary{background:var(--sage);color:#fff;box-shadow:0 6px 18px rgba(126,148,113,.28)}
+  .btn.primary:active{background:var(--sage-deep)}
+  .btn.soft{background:var(--card);border-color:var(--line);color:var(--ink-soft)}
+  .btn.soft:active{background:var(--cream-deep)}
+  .btn.quiet{background:transparent;color:var(--muted);font-weight:500;min-height:48px;box-shadow:none}
+  .btn.warn{background:var(--terra-soft);color:var(--terra-deep);border-color:#EBD3CA}
+  .btn:disabled{opacity:.5;cursor:default;box-shadow:none}
+
+  /* ——— карточки ——— */
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px;
+    box-shadow:var(--shadow);
+  }
+
+  .field{display:flex;flex-direction:column;gap:10px}
+  .field > label, .qhead h2{font-size:1.0625rem;font-weight:650}
+  .hint{font-size:.875rem;color:var(--muted);line-height:1.4}
+
+  input[type="text"], input[type="time"], input[type="date"], textarea{
+    width:100%;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 18px;
+    font:inherit;
+    font-size:1.0625rem;
+    color:var(--ink);
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type="text"], input[type="time"], input[type="date"]{min-height:var(--tap)}
+  textarea{min-height:74px;resize:vertical;padding:12px 16px;line-height:1.4}
+  input[type="text"]:focus, input[type="time"]:focus, input[type="date"]:focus, textarea:focus{border-color:var(--sage);box-shadow:0 0 0 3px var(--sage-soft)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:360px){ .grid2{grid-template-columns:1fr} }
+
+  .avatar-edit{
+    width:96px;height:96px;border-radius:50%;
+    border:1.5px dashed var(--line);background:var(--cream-deep);
+    display:grid;place-items:center;cursor:pointer;overflow:hidden;padding:0;margin:0 auto;
+  }
+  .avatar-edit img{width:100%;height:100%;object-fit:cover;display:block}
+  .avatar-edit span{font-size:.8125rem;color:var(--muted)}
+
+  /* ——— варианты ответа ——— */
+  .options{display:flex;flex-direction:column;gap:10px}
+  .opt{
+    width:100%;
+    text-align:left;
+    background:var(--card);
+    border:1.5px solid var(--line);
+    border-radius:18px;
+    padding:16px 18px;
+    min-height:var(--tap);
+    cursor:pointer;
+    display:flex;align-items:center;gap:14px;
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .opt:active{transform:scale(.985)}
+  .opt .txt{flex:1;min-width:0}
+  .opt .lbl{font-weight:600;font-size:1.03rem}
+  .opt .desc{font-size:.85rem;color:var(--muted);margin-top:2px;line-height:1.35}
+  .opt .mark{
+    width:24px;height:24px;flex:none;border-radius:50%;
+    border:1.5px solid var(--line);
+    display:grid;place-items:center;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .opt .mark svg{width:13px;height:13px;stroke:#fff;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+  .opt.sel{border-color:var(--sage);background:var(--sage-soft)}
+  .opt.sel .mark{background:var(--sage);border-color:var(--sage)}
+  .opt.sel .mark svg{opacity:1}
+  .opt.skip{border-style:dashed}
+  .opt.skip .lbl{color:var(--muted);font-weight:550}
+
+  /* ——— шкала и лапы ——— */
+  .scale{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .scale button{
+    background:var(--card);border:1.5px solid var(--line);border-radius:16px;
+    min-height:64px;cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;padding:8px 4px;
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .scale button:active{transform:scale(.97)}
+  .scale button .n{font-size:1.25rem;font-weight:650}
+  .scale button .t{font-size:.6875rem;color:var(--muted);text-align:center;line-height:1.2}
+  .scale button.sel{border-color:var(--sage);background:var(--sage-soft)}
+  .scale button.sel .t{color:var(--sage-deep)}
+
+  .paws{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .paws button{
+    background:var(--card);border:1.5px solid var(--line);border-radius:16px;
+    min-height:52px;cursor:pointer;font-size:.9375rem;font-weight:550;
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .paws button:active{transform:scale(.97)}
+  .paws button.sel{border-color:var(--sage);background:var(--sage-soft)}
+  .paws button.wide{grid-column:1 / -1}
+
+  /* ——— прогресс ——— */
+  .progress{padding:0 20px 4px;display:flex;align-items:center;gap:12px}
+  .track{flex:1;height:6px;border-radius:99px;background:var(--cream-deep);overflow:hidden}
+  .track > i{display:block;height:100%;border-radius:99px;background:var(--sage);transition:width .3s cubic-bezier(.4,0,.2,1)}
+  .progress .count{font-size:.8125rem;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+
+  .qhead{display:flex;flex-direction:column;gap:6px;padding:12px 0 4px}
+  .qhead h2{font-size:1.5rem;line-height:1.25;letter-spacing:-.02em}
+
+  /* ——— статус ——— */
+  .status-dot{width:12px;height:12px;border-radius:50%;flex:none}
+  .s-green{background:var(--sage)}
+  .s-yellow{background:var(--amber)}
+  .s-red{background:var(--terra)}
+  .s-neutral{background:var(--muted)}
+
+  .status-card{
+    border-radius:24px;padding:26px 22px;border:1px solid transparent;
+    display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;
+  }
+  .status-card .glyph{
+    width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin-bottom:4px;
+  }
+  .status-card .glyph svg{width:30px;height:30px;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .status-card h2{font-size:1.4375rem;letter-spacing:-.02em}
+  .status-card p{margin:0;font-size:.9375rem;line-height:1.45}
+
+  .st-green{background:var(--sage-soft);border-color:#DCE5D3;color:var(--sage-deep)}
+  .st-green .glyph{background:var(--sage)}
+  .st-green .glyph svg{stroke:#fff}
+  .st-yellow{background:var(--amber-soft);border-color:#EDDFC0;color:var(--amber-deep)}
+  .st-yellow .glyph{background:var(--amber)}
+  .st-yellow .glyph svg{stroke:#fff}
+  .st-red{background:var(--terra-soft);border-color:#EBD3CA;color:var(--terra-deep)}
+  .st-red .glyph{background:var(--terra)}
+  .st-red .glyph svg{stroke:#fff}
+  .st-neutral{background:var(--cream-deep);border-color:var(--line);color:var(--ink-soft)}
+  .st-neutral .glyph{background:var(--muted)}
+  .st-neutral .glyph svg{stroke:#fff}
+
+  .reasons{display:flex;flex-direction:column;gap:12px}
+  .reasons h3{font-size:.875rem;font-weight:650;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .reasons ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+  .reasons li{display:flex;gap:12px;align-items:flex-start;font-size:.97rem;line-height:1.4}
+  .reasons li .status-dot{margin-top:7px}
+  .reasons li.ok{color:var(--ink-soft)}
+
+  /* ——— главный экран ——— */
+  .hero{display:flex;align-items:center;gap:14px;padding:8px 0 4px}
+  .hero .avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none;background:var(--cream-deep)}
+  .hero .hcol{min-width:0}
+  .hero .name{font-size:1.75rem;font-weight:680;letter-spacing:-.025em;line-height:1.15}
+  .hero .caption{font-size:.9375rem;color:var(--muted)}
+
+  .last{display:flex;flex-direction:column;gap:14px}
+  .last .row{display:flex;align-items:center;gap:10px}
+  .last .row .when{font-size:.85rem;color:var(--muted);margin-left:auto}
+  .last .title{font-size:1.125rem;font-weight:650}
+  .last .lines{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:var(--ink-soft)}
+  .last .lines div{display:flex;gap:9px;align-items:flex-start}
+  .last .lines .status-dot{margin-top:6px;width:8px;height:8px}
+
+  .empty{text-align:center;color:var(--muted);font-size:.9375rem;padding:8px 0}
+
+  /* ——— дневник ——— */
+  .entries{display:flex;flex-direction:column;gap:10px}
+  .entry{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:16px 18px;cursor:pointer;text-align:left;width:100%;
+    display:flex;flex-direction:column;gap:6px;
+    transition:background .15s ease;
+  }
+  .entry:active{background:var(--cream-deep)}
+  .entry .head{display:flex;align-items:center;gap:10px}
+  .entry .head .d{font-weight:600;font-size:.97rem}
+  .entry .head .tag{font-size:.6875rem;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+  .entry .head .chev{margin-left:auto;color:var(--muted);font-size:.8125rem}
+  .entry .sum{font-size:.875rem;color:var(--muted);line-height:1.4}
+  .entry .detail{display:none;flex-direction:column;gap:10px;padding-top:8px;margin-top:2px;border-top:1px solid var(--line)}
+  .entry.open .detail{display:flex}
+  .entry .detail .qa{display:flex;gap:10px;font-size:.875rem;line-height:1.4}
+  .entry .detail .qa b{font-weight:600;color:var(--ink-soft);flex:none;min-width:104px}
+  .entry .detail .qa span{color:var(--muted)}
+  .entry .detail .rs{display:flex;flex-direction:column;gap:7px;font-size:.875rem}
+  .entry .detail .rs div{display:flex;gap:9px;align-items:flex-start}
+  .entry .detail .rs .status-dot{margin-top:6px;width:8px;height:8px}
+  .rev{display:flex;flex-direction:column;gap:5px;padding-top:8px;margin-top:2px;border-top:1px dashed var(--line)}
+  .rev-h{font-size:.75rem;font-weight:650;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .rev-i{font-size:.8125rem;color:var(--ink-soft);line-height:1.4}
+
+  .note{
+    background:var(--cream-deep);border-radius:16px;padding:14px 16px;
+    font-size:.875rem;color:var(--ink-soft);line-height:1.45;
+  }
+  .note b{font-weight:650}
+
+  .divider{height:1px;background:var(--line);margin:2px 0}
+
+  .checkline{
+    width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);
+    border-radius:18px;padding:15px 18px;min-height:var(--tap);cursor:pointer;
+    display:flex;align-items:center;gap:14px;font-size:1rem;line-height:1.35;
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .checkline:active{transform:scale(.985)}
+  .checkline .box{
+    width:24px;height:24px;flex:none;border-radius:8px;border:1.5px solid var(--line);
+    display:grid;place-items:center;transition:background .15s ease, border-color .15s ease;
+  }
+  .checkline .box svg{width:13px;height:13px;stroke:#fff;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+  .checkline.sel{border-color:var(--terra);background:var(--terra-soft)}
+  .checkline.sel .box{background:var(--terra);border-color:var(--terra)}
+  .checkline.sel .box svg{opacity:1}
+  .checkline.calm.sel{border-color:var(--sage);background:var(--sage-soft)}
+  .checkline.calm.sel .box{background:var(--sage);border-color:var(--sage)}
+
+  /* ——— календарь / лекарства / клещ ——— */
+  .pill{display:inline-block;font-size:.75rem;padding:2px 9px;border-radius:999px;background:var(--cream-deep);color:var(--ink-soft);white-space:nowrap}
+  .pill.due{background:var(--amber-soft);color:var(--amber-deep)}
+  .pill.over{background:var(--terra-soft);color:var(--terra-deep)}
+  .pill.ok{background:var(--sage-soft);color:var(--sage-deep)}
+  .rowline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .rowline .grow{flex:1;min-width:0}
+  .daycount{font-size:1.75rem;font-weight:680;letter-spacing:-.02em;color:var(--sage-deep)}
+  .miniact{display:flex;gap:8px;flex-wrap:wrap}
+  .miniact .btn{min-height:44px;width:auto;flex:1 1 40%;padding:10px 12px;font-size:.9rem;box-shadow:none}
+  .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+  .seg button{background:var(--card);border:1.5px solid var(--line);border-radius:14px;min-height:46px;cursor:pointer;font-size:.9rem;font-weight:550}
+  .seg button.sel{border-color:var(--sage);background:var(--sage-soft)}
+  .thumb{width:100%;max-width:180px;border-radius:14px;border:1px solid var(--line);object-fit:cover}
+  .photorow{display:flex;gap:10px;flex-wrap:wrap}
+  .photobtn{flex:1 1 120px;min-height:96px;border:1.5px dashed var(--line);border-radius:14px;background:var(--cream-deep);color:var(--muted);font-size:.8125rem;cursor:pointer;display:grid;place-items:center;overflow:hidden;padding:0}
+  .photobtn img{width:100%;height:100%;object-fit:cover}
+  .s-log{background:var(--muted)}
+  .thumbs{display:flex;gap:8px;flex-wrap:wrap}
+  .thumbs .t{position:relative;width:84px;height:84px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+  .thumbs .t img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumbs .t button{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(58,54,47,.72);color:#fff;font-size:.8rem;line-height:1;cursor:pointer;padding:0}
+  .rep h3{font-size:.8125rem;font-weight:650;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-top:6px}
+  .rep .kv{display:flex;gap:8px;font-size:.9rem;line-height:1.45}
+  .rep .kv b{min-width:120px;flex:none;color:var(--ink-soft)}
+
+  @media print {
+    .top, .foot, .iconbtn { display:none !important; }
+    .screen:not(.active) { display:none !important; }
+    .screen.active { display:block !important; }
+    body { background:#fff; }
+    .card { box-shadow:none; border-color:#ccc; break-inside:avoid; }
+    .note { background:#f4f4f4; }
+  }
+
+  .fade{animation:fade .28s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){
+    .fade{animation:none}
+    *{transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══ 1. ПРОФИЛЬ / ЛИЧНАЯ НОРМА ═══ -->
+  <section class="screen" id="s-setup">
+    <div class="top">
+      <div>
+        <h1 id="setupTitle">Профиль Миши</h1>
+        <div class="sub">его норма — то, с чем сравниваем</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="iconbtn" id="setupClose" hidden aria-label="Закрыть">
+        <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="body">
+      <div class="note">Мы сравниваем самочувствие не с «идеальной собакой», а с тем, как обычно бывает именно у него. Привычная хромота или редкий пропуск еды — не повод для тревоги.</div>
+
+      <div class="card field">
+        <button class="avatar-edit" id="photoBtn" type="button" aria-label="Фото Миши">
+          <img id="photoImg" alt="Фото Миши" hidden>
+          <span id="photoPlaceholder">＋ фото</span>
+        </button>
+        <input type="file" id="photoInput" accept="image/*" hidden>
+        <label for="dogName">Кличка</label>
+        <input type="text" id="dogName" placeholder="Миша" autocomplete="off" enterkeyhint="next">
+        <div class="grid2">
+          <div class="field">
+            <label for="dogBirth">Возраст / год рождения</label>
+            <input type="text" id="dogBirth" placeholder="2019" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="dogWeight">Вес, кг</label>
+            <input type="text" id="dogWeight" inputmode="decimal" placeholder="12" autocomplete="off">
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="dogBreed">Порода</label>
+            <input type="text" id="dogBreed" placeholder="метис" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Пол</label>
+            <div class="paws" id="dogSex"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card field">
+        <label>Хроническое и важное</label>
+        <div class="hint">Диагнозы, аллергии, что нельзя давать, лечащий врач.</div>
+        <textarea id="dogDiagnoses" placeholder="Диагнозы и наблюдения"></textarea>
+        <textarea id="dogAllergies" placeholder="Аллергии"></textarea>
+        <textarea id="dogBanned" placeholder="Запрещённые препараты"></textarea>
+        <input type="text" id="dogVet" placeholder="Лечащий врач" autocomplete="off">
+      </div>
+
+      <div class="card field">
+        <label>Аппетит</label>
+        <div class="hint">Сколько приёмов еды он обычно может пропустить без того, чтобы это было необычным.</div>
+        <div class="options" id="normSkips"></div>
+        <div class="grid2">
+          <div class="field">
+            <label for="mealsPerDay">Приёмов в день</label>
+            <input type="text" id="mealsPerDay" inputmode="numeric" placeholder="2" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="portion">Обычная порция</label>
+            <input type="text" id="portion" placeholder="150 г" autocomplete="off">
+          </div>
+        </div>
+        <input type="text" id="medFood" placeholder="Лечебная или любимая еда" autocomplete="off">
+      </div>
+
+      <div class="card field">
+        <label>Обычная хромота</label>
+        <div class="hint">Как он ходит в спокойный, привычный день.</div>
+        <div class="scale" id="normLimp"></div>
+        <div class="hint" id="normLimpText"></div>
+        <div class="field" id="normPawField">
+          <div class="hint">Какая лапа</div>
+          <div class="paws" id="normPaw"></div>
+        </div>
+        <input type="text" id="limpWhen" placeholder="Когда усиливается (после нагрузки, к вечеру…)" autocomplete="off">
+      </div>
+
+      <div class="card field">
+        <label>ЖКТ</label>
+        <input type="text" id="stoolFreq" placeholder="Обычная частота стула" autocomplete="off">
+        <textarea id="giNotes" placeholder="Хронические особенности"></textarea>
+      </div>
+
+      <div class="card field">
+        <label for="normTemp">Обычная температура, °C</label>
+        <div class="hint">Если измеряли ректально в спокойном состоянии. Можно оставить пустым.</div>
+        <input type="text" id="normTemp" inputmode="decimal" placeholder="38.5" autocomplete="off">
+      </div>
+
+      <div class="card field">
+        <label>Расписание проверок</label>
+        <div class="hint">Две спокойные проверки в день. Пропуск — без последствий.</div>
+        <div class="grid2">
+          <div class="field">
+            <label for="checkAM">Утро</label>
+            <input type="time" id="checkAM" value="09:00">
+          </div>
+          <div class="field">
+            <label for="checkPM">Вечер</label>
+            <input type="time" id="checkPM" value="20:00">
+          </div>
+        </div>
+        <button class="btn soft" id="notifyBtn" type="button">Включить напоминания на этом устройстве</button>
+        <button class="btn soft" id="icsBtn" type="button">Добавить напоминания в календарь</button>
+        <div class="hint">Напоминания на телефоне приходят, только когда приложение установлено на «Домой» и открывалось. Для надёжности добавьте их в системный календарь.</div>
+      </div>
+
+      <div class="card field">
+        <label>Экстренная помощь</label>
+        <div class="hint">Куда звонить, если проверка покажет красный статус.</div>
+        <input type="text" id="clinicName" placeholder="Основная клиника — название" autocomplete="off">
+        <input type="text" id="clinicPhone" inputmode="tel" placeholder="Телефон основной клиники" autocomplete="off">
+        <input type="text" id="clinicAddr" placeholder="Адрес" autocomplete="off">
+        <div class="divider"></div>
+        <input type="text" id="clinic24Name" placeholder="Круглосуточная клиника — название" autocomplete="off">
+        <input type="text" id="clinic24Phone" inputmode="tel" placeholder="Телефон круглосуточной" autocomplete="off">
+        <input type="text" id="clinic24Addr" placeholder="Адрес" autocomplete="off">
+      </div>
+
+      <div class="card field">
+        <label>Данные</label>
+        <div class="hint">Всё хранится только на этом устройстве. Сделайте копию, чтобы не потерять историю.</div>
+        <button class="btn soft" id="exportBtn" type="button">Скачать резервную копию</button>
+        <button class="btn soft" id="importBtn" type="button">Загрузить из копии</button>
+        <input type="file" id="importInput" accept="application/json,.json" hidden>
+        <button class="btn quiet" id="wipeBtn" type="button">Удалить все данные</button>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn primary" id="setupSave">Сохранить</button>
+    </div>
+  </section>
+
+  <!-- ═══ 2. ГЛАВНЫЙ ЭКРАН ═══ -->
+  <section class="screen" id="s-home">
+    <div class="top">
+      <div>
+        <h1>Misha Health Tracker</h1>
+        <div class="sub">спокойное наблюдение</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="iconbtn" id="toCalendar" aria-label="Календарь">
+        <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>
+      </button>
+      <button class="iconbtn" id="toDiary" aria-label="Дневник">
+        <svg viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H19v16H5.5A1.5 1.5 0 0 1 4 18.5z"/><path d="M8 4v16M11.5 9h4M11.5 13h4"/></svg>
+      </button>
+      <button class="iconbtn" id="toSettings" aria-label="Профиль Миши">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 14.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.47 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11a1.6 1.6 0 0 0 1.47-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.47V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97z"/></svg>
+      </button>
+    </div>
+    <div class="body">
+      <div class="hero" id="homeHero"></div>
+      <div class="card last" id="homeLast"></div>
+      <div class="note" id="homeNext" hidden></div>
+      <div class="note" id="homeReminder" hidden></div>
+      <div class="note" id="homeNorm"></div>
+    </div>
+    <div class="foot">
+      <button class="btn primary" id="startCheck">Начать проверку</button>
+      <button class="btn warn" id="startQuick">Что-то не так</button>
+      <button class="btn quiet" id="startWalk">Отметить после прогулки</button>
+    </div>
+  </section>
+
+  <!-- ═══ 3. ПРОВЕРКА ═══ -->
+  <section class="screen" id="s-check">
+    <div class="top">
+      <button class="iconbtn" id="checkBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="spacer"></div>
+      <button class="iconbtn" id="checkExit" aria-label="Выйти">
+        <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="progress">
+      <div class="track" role="progressbar" aria-label="Ход проверки" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1"><i id="progBar" style="width:0%"></i></div>
+      <div class="count" id="progCount">1 / 9</div>
+    </div>
+    <div class="body" id="checkBody"></div>
+    <div class="foot" id="checkFoot"></div>
+  </section>
+
+  <!-- ═══ 3б. БЫСТРАЯ ПРОВЕРКА «ЧТО-ТО НЕ ТАК» ═══ -->
+  <section class="screen" id="s-quick">
+    <div class="top">
+      <button class="iconbtn" id="quickBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="spacer"></div>
+    </div>
+    <div class="body">
+      <div class="qhead">
+        <h2>Что вы заметили?</h2>
+        <div class="hint">Отметьте всё, что видите прямо сейчас. Если ничего из списка — ниже можно пройти полную проверку.</div>
+      </div>
+      <div class="options" id="quickList"></div>
+    </div>
+    <div class="foot">
+      <button class="btn primary" id="quickDone">Посмотреть, что это значит</button>
+    </div>
+  </section>
+
+  <!-- ═══ 4. РЕЗУЛЬТАТ ═══ -->
+  <section class="screen" id="s-result">
+    <div class="top">
+      <div>
+        <h1>Результат</h1>
+        <div class="sub" id="resultWhen"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body" id="resultBody"></div>
+    <div class="foot" id="resultFoot"></div>
+  </section>
+
+  <!-- ═══ 5. ДНЕВНИК ═══ -->
+  <section class="screen" id="s-diary">
+    <div class="top">
+      <button class="iconbtn" id="diaryBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1>Дневник</h1>
+        <div class="sub" id="diaryCount"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body">
+      <div class="entries" id="diaryList"></div>
+    </div>
+    <div class="foot" id="diaryFoot"></div>
+  </section>
+
+  <!-- ═══ 6. КАЛЕНДАРЬ ═══ -->
+  <section class="screen" id="s-calendar">
+    <div class="top">
+      <button class="iconbtn" id="calBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1>Календарь</h1>
+        <div class="sub" id="calSub"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body" id="calBody"></div>
+    <div class="foot" id="calFoot"></div>
+  </section>
+
+  <!-- ═══ 7. ЛЕКАРСТВА И ОБРАБОТКИ ═══ -->
+  <section class="screen" id="s-meds">
+    <div class="top">
+      <button class="iconbtn" id="medsBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1 id="medsTitle">Лекарства и обработки</h1>
+        <div class="sub" id="medsSub"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body" id="medsBody"></div>
+    <div class="foot" id="medsFoot"></div>
+  </section>
+
+  <!-- ═══ 8. УКУС КЛЕЩА ═══ -->
+  <section class="screen" id="s-tick">
+    <div class="top">
+      <button class="iconbtn" id="tickBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1 id="tickTitle">Укус клеща</h1>
+        <div class="sub" id="tickSub"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body" id="tickBody"></div>
+    <div class="foot" id="tickFoot"></div>
+  </section>
+
+  <!-- ═══ 9. ПОСЛЕ ПРОГУЛКИ ═══ -->
+  <section class="screen" id="s-walk">
+    <div class="top">
+      <button class="iconbtn" id="walkBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1>После прогулки</h1>
+        <div class="sub">короткая отметка, без статуса</div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body" id="walkBody"></div>
+    <div class="foot" id="walkFoot"></div>
+  </section>
+
+  <!-- ═══ 10. ОТЧЁТ ВЕТЕРИНАРУ ═══ -->
+  <section class="screen" id="s-report">
+    <div class="top">
+      <button class="iconbtn" id="reportBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1>Отчёт ветеринару</h1>
+        <div class="sub" id="reportSub"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body" id="reportBody"></div>
+    <div class="foot" id="reportFoot"></div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════ Хранилище ══════════════════ */
+
+var KEY_PROFILE = "misha.profile.v2";
+var KEY_ENTRIES = "misha.entries.v2";
+var KEY_REMINDER = "misha.reminder";
+
+function load(key, fallback){
+  try{
+    var raw = localStorage.getItem(key);
+    if(!raw) return fallback;
+    var val = JSON.parse(raw);
+    return (val === null || val === undefined) ? fallback : val;
+  }catch(e){ return fallback; }
+}
+function save(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); return true; }
+  catch(e){ return false; }
+}
+function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
+
+/* Перенос данных из v1 в v2 при первом открытии новой версии. v1 оставляем как есть. */
+function migrate(){
+  try{
+    if(localStorage.getItem(KEY_PROFILE) === null){
+      var rawP = localStorage.getItem("misha.profile.v1");
+      if(rawP){
+        var p = JSON.parse(rawP);
+        if(p && typeof p === "object") localStorage.setItem(KEY_PROFILE, JSON.stringify(p));
+      }
+    }
+    if(localStorage.getItem(KEY_ENTRIES) === null){
+      var rawE = localStorage.getItem("misha.entries.v1");
+      if(rawE){
+        var e = JSON.parse(rawE);
+        if(Array.isArray(e)){
+          for(var i=0;i<e.length;i++){
+            if(e[i] && e[i].rulesVersion === undefined) e[i].rulesVersion = null;
+          }
+          localStorage.setItem(KEY_ENTRIES, JSON.stringify(e));
+        }
+      }
+    }
+  }catch(err){}
+}
+migrate();
+
+/* ══════════════════ Профиль ══════════════════ */
+
+var PROFILE_DEFAULTS = {
+  schema:3, name:"Миша", photo:"assets/misha.webp",
+  birth:"", weight:"", breed:"", sex:"",
+  diagnoses:"", allergies:"", bannedMeds:"", vetName:"",
+  mealsPerDay:"", portion:"", medFood:"", skips:0,
+  limpNorm:0, limpPaw:"none", limpWhen:"",
+  stoolFreq:"", giNotes:"", tempNorm:null,
+  checkAM:"09:00", checkPM:"20:00",
+  clinicName:"", clinicPhone:"", clinicAddr:"",
+  clinic24Name:"", clinic24Phone:"", clinic24Addr:""
+};
+
+function normalizeProfile(p){
+  if(!p || typeof p !== "object") p = {};
+  for(var k in PROFILE_DEFAULTS){
+    if(!PROFILE_DEFAULTS.hasOwnProperty(k)) continue;
+    if(p[k] === undefined) p[k] = PROFILE_DEFAULTS[k];
+  }
+  if(typeof p.tempNorm !== "number") p.tempNorm = null;
+  p.schema = 3;
+  return p;
+}
+
+var KEY_MEDS = "misha.meds.v1";
+var KEY_TICKS = "misha.ticks.v1";
+var KEY_EVENTS = "misha.events.v1";
+
+var profile = load(KEY_PROFILE, null);
+if(profile) normalizeProfile(profile);
+var entries = load(KEY_ENTRIES, []);
+if(!Array.isArray(entries)) entries = [];
+var meds = load(KEY_MEDS, []);
+if(!Array.isArray(meds)) meds = [];
+var ticks = load(KEY_TICKS, []);
+if(!Array.isArray(ticks)) ticks = [];
+var events = load(KEY_EVENTS, []);
+if(!Array.isArray(events)) events = [];
+
+/* ══════════════════ Справочники и правила ══════════════════ */
+
+/* Продуктовые пороги первой версии. Меняются только с подтверждением ветеринара.
+   При изменении любого порога — поднять version: каждая запись хранит версию, по которой оценена. */
+var RULES = {
+  version: "2026-09-06",
+  temp: { yellowMin: 39.4, redMin: 40.0 }, /* °C: жёлтый при плохом самочувствии / красный с признаками перегрева */
+  fastHours: 24,                           /* «не ест N часов» → жёлтый */
+  moderateForYellow: 2,                    /* столько небольших отличий вместе поднимают статус до жёлтого */
+  keyUnknownForNeutral: 2                  /* столько непроверенных ключевых показателей → «проверка неполная» */
+};
+
+var PAWS = [
+  {v:"none",  label:"Не хромает"},
+  {v:"fl",    label:"Передняя левая"},
+  {v:"fr",    label:"Передняя правая"},
+  {v:"bl",    label:"Задняя левая"},
+  {v:"br",    label:"Задняя правая"},
+  {v:"vary",  label:"По-разному"}
+];
+function pawLabel(v){
+  for(var i=0;i<PAWS.length;i++) if(PAWS[i].v===v) return PAWS[i].label;
+  return "не отмечено";
+}
+
+var LIMP_SCALE = [
+  {n:0, t:"нет",      full:"0 — не хромает"},
+  {n:1, t:"чуть-чуть", full:"1 — еле заметно, только иногда"},
+  {n:2, t:"заметно",  full:"2 — заметно, бережёт лапу"},
+  {n:3, t:"сильно",   full:"3 — почти не наступает"}
+];
+function limpText(n){
+  for(var i=0;i<LIMP_SCALE.length;i++) if(LIMP_SCALE[i].n===n) return LIMP_SCALE[i].full;
+  return "—";
+}
+
+var SKIPS = [
+  {v:0, label:"Не пропускает",   desc:"ест каждый раз"},
+  {v:1, label:"Иногда один раз", desc:"бывает, что откажется от одного кормления"},
+  {v:2, label:"Бывает и два",    desc:"для него это привычное дело"}
+];
+
+var SEXES = [ {v:"m", label:"Мальчик"}, {v:"f", label:"Девочка"} ];
+
+/* Общий вариант «пропустить вопрос» — попадает в подсчёт «проверка неполная». */
+var UNKNOWN = {v:"unknown", label:"Не проверяла", desc:"пропустить этот вопрос", skip:true};
+
+/* Вопросы плановой проверки. Порядок массива = порядок экранов. */
+var QUESTIONS = [
+  {
+    id:"general",
+    title:"Как он себя ведёт?",
+    hint:"Сравните с обычным для него днём.",
+    options:[
+      {v:"normal", label:"Как обычно",         desc:"привычная активность и настроение"},
+      {v:"quiet",  label:"Чуть тише обычного", desc:"поспокойнее, но ест, пьёт, реагирует"},
+      {v:"worse",  label:"Явно хуже",          desc:"вялый, не встаёт, прячется, не реагирует"},
+      UNKNOWN
+    ],
+    short:{normal:"как обычно", quiet:"чуть тише", worse:"явно хуже", unknown:"не проверяла"}
+  },
+  {
+    id:"collapse",
+    title:"Была слабость, шаткость, обмороки?",
+    hint:"За последние сутки.",
+    options:[
+      {v:"none",  label:"Нет",                       desc:""},
+      {v:"weak",  label:"Резкая слабость, шатается", desc:"заваливается, подкашиваются лапы"},
+      {v:"faint", label:"Была потеря сознания",      desc:"даже кратковременная"},
+      UNKNOWN
+    ],
+    short:{none:"нет", weak:"резкая слабость", faint:"потеря сознания", unknown:"не проверяла"}
+  },
+  {
+    id:"urine",
+    title:"Какого цвета моча?",
+    hint:"Если сегодня ещё не видели — так и отметьте.",
+    options:[
+      {v:"normal", label:"Обычная",                     desc:"светло-жёлтая, соломенная"},
+      {v:"dark",   label:"Тёмная, красная, коричневая", desc:"цвет чая, крови или ржавчины"},
+      {v:"unknown",label:"Не видела сегодня",           desc:"посмотрите при случае", skip:true}
+    ],
+    short:{normal:"обычная", dark:"тёмная / красная", unknown:"не видели"}
+  },
+  {
+    id:"gums",
+    title:"Какого цвета дёсны?",
+    hint:"Приподнимите губу и посмотрите на десну над клыком.",
+    options:[
+      {v:"normal", label:"Розовые, как обычно",  desc:"привычный оттенок"},
+      {v:"red",    label:"Необычно красные",     desc:"ярче, чем всегда"},
+      {v:"pale",   label:"Очень бледные, белые", desc:"почти без цвета"},
+      {v:"yellow", label:"Желтоватые",           desc:"желтизна на дёснах или белках глаз"},
+      UNKNOWN
+    ],
+    short:{normal:"розовые", red:"необычно красные", pale:"очень бледные", yellow:"желтоватые", unknown:"не проверяла"}
+  },
+  {
+    id:"appetite",
+    title:"Как с едой?",
+    hint:"",
+    options:[
+      {v:"normal", label:"Ест как обычно",       desc:""},
+      {v:"less",   label:"Съел меньше обычного", desc:"поел, но не всё"},
+      {v:"skip1",  label:"Пропустил один приём", desc:"остальное съел"},
+      {v:"skip2",  label:"Пропустил несколько",  desc:"но за сутки что-то ел"},
+      {v:"fast24", label:"Не ест больше суток",  desc:"24 часа и дольше"},
+      UNKNOWN
+    ],
+    short:{normal:"ест как обычно", less:"съел меньше", skip1:"пропустил один приём", skip2:"пропустил несколько", fast24:"не ест больше суток", unknown:"не проверяла"}
+  },
+  {
+    id:"limp",
+    type:"limp",
+    title:"Как он ходит?",
+    hint:"Оцените так же, как оценивали привычную норму."
+  },
+  {
+    id:"vomit",
+    title:"Была ли рвота или понос?",
+    hint:"За последние сутки.",
+    options:[
+      {v:"none",     label:"Нет",         desc:""},
+      {v:"once",     label:"Один раз",    desc:"после этого ведёт себя как обычно"},
+      {v:"repeated", label:"Повторяется", desc:"несколько раз подряд"},
+      {v:"blood",    label:"С кровью",    desc:"алая кровь или похоже на кофейную гущу"},
+      UNKNOWN
+    ],
+    short:{none:"нет", once:"один раз", repeated:"повторяется", blood:"с кровью", unknown:"не проверяла"}
+  },
+  {
+    id:"breathing",
+    title:"Как он дышит в покое?",
+    hint:"Посмотрите, когда он полежал и отдохнул хотя бы 10 минут.",
+    options:[
+      {v:"normal",  label:"Спокойно, как обычно", desc:"ровное, тихое дыхание"},
+      {v:"heavy",   label:"Тяжелее обычного",     desc:"часто дышит даже после отдыха"},
+      {v:"labored", label:"Затруднённо",          desc:"с усилием, открытым ртом, вытянув шею"},
+      UNKNOWN
+    ],
+    short:{normal:"спокойно", heavy:"тяжелее обычного", labored:"затруднённо", unknown:"не проверяла"}
+  },
+  {
+    id:"temp",
+    type:"temp",
+    title:"Мерили температуру?",
+    hint:"Если да — впишите значение. Если нет — отметьте «не мерила»."
+  }
+];
+
+var Q_TITLES = {
+  general:"Состояние", collapse:"Слабость", urine:"Моча", gums:"Дёсны", appetite:"Аппетит",
+  limp:"Хромота", vomit:"Рвота / понос", breathing:"Дыхание", temp:"Температура"
+};
+
+function qById(id){
+  for(var i=0;i<QUESTIONS.length;i++) if(QUESTIONS[i].id === id) return QUESTIONS[i];
+  return null;
+}
+
+/* Быстрая проверка «Что-то не так» — только жёсткие / срочные признаки. */
+var QUICK = [
+  {v:"urine",     level:"red",    label:"Тёмная, красная или коричневая моча",       reason:"Моча тёмная, красная или коричневая"},
+  {v:"gums",      level:"red",    label:"Очень бледные, белые или желтоватые дёсны", reason:"Дёсны очень бледные или желтоватые"},
+  {v:"breathing", level:"red",    label:"Дышит с трудом, с усилием",                 reason:"Затруднённое дыхание"},
+  {v:"weak",      level:"red",    label:"Резкая слабость, шатается, заваливается",   reason:"Резкая слабость и шаткость"},
+  {v:"faint",     level:"red",    label:"Была потеря сознания",                      reason:"Потеря сознания"},
+  {v:"blood",     level:"red",    label:"Рвота с кровью",                            reason:"Рвота с кровью"},
+  {v:"vomit",     level:"yellow", label:"Рвёт повторно, состояние ухудшилось",       reason:"Повторная рвота на фоне ухудшения состояния", redIf:"worse"},
+  {v:"worse",     level:"yellow", label:"Ведёт себя явно не так, как обычно",        reason:"Состояние явно хуже обычного"}
+];
+
+/* ══════════════════ Логика статусов ══════════════════ */
+
+/* Возвращает { status:'red'|'yellow'|'neutral'|'green', red:[], yellow:[], ok:[] }.
+   red     — жёсткие признаки, от личной нормы не зависят;
+   yellow  — отклонения от личной нормы Миши либо сумма небольших отличий;
+   neutral — данных не хватает, чтобы уверенно сказать «всё как обычно»;
+   green   — всё в пределах его нормы. ok[] — что осознанно НЕ считаем тревогой. */
+function evaluate(a, p){
+  a = a || {};
+  p = p || {};
+  var red = [], yellow = [], ok = [];
+
+  var limp = (typeof a.limp === "number") ? a.limp : null;
+  var normLimp = (typeof p.limpNorm === "number") ? p.limpNorm : 0;
+  var normPaw  = p.limpPaw || "none";
+  var normSkips = (typeof p.skips === "number") ? p.skips : 0;
+  var temp = (typeof a.temp === "number") ? a.temp : null;
+
+  /* — КРАСНЫЙ — */
+  if(a.urine === "dark")        red.push("Моча тёмная, красная или коричневая");
+  if(a.gums === "pale")         red.push("Очень бледные дёсны");
+  if(a.gums === "yellow")       red.push("Желтоватые дёсны");
+  if(a.breathing === "labored") red.push("Затруднённое дыхание");
+  if(a.collapse === "weak")     red.push("Резкая слабость и шаткость");
+  if(a.collapse === "faint")    red.push("Была потеря сознания");
+  if(a.vomit === "blood")       red.push("Рвота с кровью");
+  if(a.vomit === "repeated" && a.general === "worse")
+    red.push("Повторная рвота на фоне явного ухудшения состояния");
+  if(temp !== null && temp >= RULES.temp.redMin && a.overheat)
+    red.push("Температура " + temp.toFixed(1) + " °C с признаками перегрева");
+
+  /* — ЖЁЛТЫЙ: отклонения от личной нормы — */
+  if(a.general === "worse")   yellow.push("Состояние явно хуже обычного");
+  if(a.appetite === "fast24") yellow.push("Не ест больше " + RULES.fastHours + " часов");
+  if(a.vomit === "repeated")  yellow.push("Рвота или понос повторяются");
+
+  if(limp !== null && limp > normLimp)
+    yellow.push("Хромота сильнее обычной: " + limp + " вместо привычных " + normLimp);
+  if(limp !== null && limp > 0 && a.limpPaw && a.limpPaw !== "none" &&
+     normPaw !== "vary" && normPaw !== "none" && a.limpPaw !== normPaw)
+    yellow.push("Хромает на другую лапу: " + pawLabel(a.limpPaw).toLowerCase() +
+                ", обычно — " + pawLabel(normPaw).toLowerCase());
+
+  if(temp !== null && temp >= RULES.temp.redMin && !a.overheat)
+    yellow.push("Высокая температура: " + temp.toFixed(1) + " °C");
+  else if(temp !== null && temp >= RULES.temp.yellowMin && temp < RULES.temp.redMin && a.general === "worse")
+    yellow.push("Температура " + temp.toFixed(1) + " °C при плохом самочувствии");
+
+  /* — Небольшие отличия: одно — наблюдаем, два и более — жёлтый — */
+  var moderate = [];
+  if(a.general === "quiet")   moderate.push("немного тише обычного");
+  if(a.appetite === "less")   moderate.push("съел меньше обычного");
+  if(a.appetite === "skip1")  moderate.push("пропустил один приём еды");
+  if(a.gums === "red")        moderate.push("дёсны краснее обычного");
+  if(a.breathing === "heavy") moderate.push("дышит тяжелее обычного");
+  if(a.vomit === "once")      moderate.push("однократная рвота или жидкий стул");
+
+  var escalated = moderate.length >= RULES.moderateForYellow;
+  if(escalated)
+    yellow.push("Сразу несколько небольших отличий от нормы: " + moderate.join(", "));
+
+  /* — Ключевые объективные показатели, которые не проверили — */
+  var keyUnknown = [];
+  if(a.urine === "unknown"     || a.urine === undefined)     keyUnknown.push("моча");
+  if(a.gums === "unknown"      || a.gums === undefined)      keyUnknown.push("дёсны");
+  if(a.breathing === "unknown" || a.breathing === undefined) keyUnknown.push("дыхание");
+
+  var status;
+  if(red.length)         status = "red";
+  else if(yellow.length) status = "yellow";
+  else if(keyUnknown.length >= RULES.keyUnknownForNeutral) status = "neutral";
+  else                   status = "green";
+
+  /* — ok[]: пояснения к решению — */
+  if(status === "neutral"){
+    var miss = keyUnknown.slice();
+    if(a.general === "unknown")  miss.push("общее состояние");
+    if(a.appetite === "unknown") miss.push("аппетит");
+    if(a.vomit === "unknown")    miss.push("рвота/понос");
+    if(limp === null)            miss.push("хромота");
+    ok.push("Не удалось оценить: " + miss.join(", ") + ". Это не тревога — посмотрите при возможности и пройдите проверку снова.");
+  }
+
+  if(!escalated){
+    if(a.general === "quiet")
+      ok.push("Чуть тише обычного — само по себе не тревога");
+    if(a.appetite === "less")
+      ok.push("Съел меньше обычного, но ел — наблюдаем за аппетитом");
+    if(a.appetite === "skip1")
+      ok.push("Один пропущенный приём еды — это не тревога");
+    if(a.gums === "red")
+      ok.push("Дёсны краснее обычного — если не проходит, отметьте при следующей проверке");
+    if(a.breathing === "heavy")
+      ok.push("Дышит тяжелее обычного — понаблюдайте в покое");
+    if(a.vomit === "once")
+      ok.push("Однократная рвота при обычном самочувствии — наблюдаем");
+  }
+  if(a.appetite === "skip2")
+    ok.push(normSkips >= 2
+      ? "Пропуск нескольких кормлений — в пределах его личной нормы"
+      : "Пропустил больше обычного, но за сутки ел — следите за аппетитом");
+  if(limp !== null && limp > 0 && limp <= normLimp)
+    ok.push("Хромота как обычно (" + limp + ") — привычная, не новая");
+  if(a.urine === "unknown" && status !== "neutral")
+    ok.push("Мочу сегодня не видели — посмотрите при случае");
+
+  return {status:status, red:red, yellow:yellow, ok:ok};
+}
+
+var STATUS_TEXT = {
+  green:{
+    title:"Всё в порядке",
+    line:"Ничего необычного для него сегодня нет. Наблюдаем дальше в обычном режиме."
+  },
+  neutral:{
+    title:"Проверка неполная",
+    line:"Часть показателей осталась непроверенной, поэтому сказать «всё как обычно» пока рано. Тревоги нет — досмотрите Мишу, когда будет удобно."
+  },
+  yellow:{
+    title:"Стоит понаблюдать",
+    line:"Есть отличия от его личной нормы. Понаблюдайте сегодня и повторите проверку через несколько часов. Если не проходит или станет хуже — свяжитесь с врачом."
+  },
+  red:{
+    title:"Нужен врач",
+    line:"Есть признаки, при которых лучше не ждать. Свяжитесь с ветеринарным врачом сегодня, а при ухудшении — сразу."
+  },
+  log:{
+    title:"Запись после прогулки",
+    line:"Наблюдение записано в дневник."
+  }
+};
+
+/* ══════════════════ Утилиты ══════════════════ */
+
+function $(sel){ return document.querySelector(sel); }
+function el(tag, cls, text){
+  var n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(text !== undefined && text !== null) n.textContent = text;
+  return n;
+}
+function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+function tick(){
+  return '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+}
+function makeId(){
+  return String(Date.now()) + "-" + Math.random().toString(36).slice(2, 7);
+}
+
+var fmtDate = new Intl.DateTimeFormat("ru-RU", {day:"numeric", month:"long"});
+var fmtTime = new Intl.DateTimeFormat("ru-RU", {hour:"2-digit", minute:"2-digit"});
+
+function whenText(ts){
+  var d = new Date(ts);
+  var now = new Date();
+  var sameDay = d.toDateString() === now.toDateString();
+  var y = new Date(now.getTime() - 86400000);
+  var yesterday = d.toDateString() === y.toDateString();
+  if(sameDay) return "сегодня в " + fmtTime.format(d);
+  if(yesterday) return "вчера в " + fmtTime.format(d);
+  return fmtDate.format(d) + ", " + fmtTime.format(d);
+}
+
+function statusGlyph(status){
+  if(status === "green") return '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+  if(status === "neutral") return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12h7"/></svg>';
+  if(status === "yellow") return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.2v.1"/></svg>';
+  return '<svg viewBox="0 0 24 24"><path d="M12 3.5 21 19H3z"/><path d="M12 10v4M12 17v.1"/></svg>';
+}
+
+function telHref(phone){ return "tel:" + String(phone || "").replace(/[^0-9+]/g, ""); }
+
+/* ══════════════════ Навигация ══════════════════ */
+
+function show(id){
+  var screens = document.querySelectorAll(".screen");
+  for(var i=0;i<screens.length;i++) screens[i].classList.remove("active");
+  var node = document.getElementById(id);
+  node.classList.add("active");
+  window.scrollTo(0, 0);
+  var body = node.querySelector(".body");
+  if(body){ body.classList.remove("fade"); void body.offsetWidth; body.classList.add("fade"); }
+}
+
+/* ══════════════════ Экран 1: профиль ══════════════════ */
+
+var draft = {photo:null, sex:"", skips:0, limpNorm:0, limpPaw:"none"};
+
+function setVal(id, v){ var n = $("#"+id); if(n) n.value = (v === null || v === undefined) ? "" : v; }
+function getVal(id){ var n = $("#"+id); return n ? n.value.trim() : ""; }
+
+function renderSetup(existing){
+  var src = normalizeProfile(existing ? JSON.parse(JSON.stringify(existing)) : {});
+  draft = {photo:src.photo, sex:src.sex, skips:src.skips, limpNorm:src.limpNorm, limpPaw:src.limpPaw};
+
+  $("#setupTitle").textContent = existing ? "Профиль Миши" : "Знакомство";
+  $("#setupClose").hidden = !existing;
+
+  setVal("dogName", existing ? src.name : "");
+  setVal("dogBirth", src.birth);   setVal("dogWeight", src.weight);   setVal("dogBreed", src.breed);
+  setVal("dogDiagnoses", src.diagnoses); setVal("dogAllergies", src.allergies);
+  setVal("dogBanned", src.bannedMeds);   setVal("dogVet", src.vetName);
+  setVal("mealsPerDay", src.mealsPerDay); setVal("portion", src.portion); setVal("medFood", src.medFood);
+  setVal("limpWhen", src.limpWhen); setVal("stoolFreq", src.stoolFreq); setVal("giNotes", src.giNotes);
+  setVal("normTemp", src.tempNorm != null ? String(src.tempNorm) : "");
+  setVal("clinicName", src.clinicName); setVal("clinicPhone", src.clinicPhone); setVal("clinicAddr", src.clinicAddr);
+  setVal("clinic24Name", src.clinic24Name); setVal("clinic24Phone", src.clinic24Phone); setVal("clinic24Addr", src.clinic24Addr);
+  setVal("checkAM", src.checkAM || "09:00"); setVal("checkPM", src.checkPM || "20:00");
+
+  showPhoto();
+  renderSexSeg();
+  renderSkips();
+  renderLimpNorm();
+  renderNormPaws();
+}
+
+function showPhoto(){
+  var im = $("#photoImg"), ph = $("#photoPlaceholder");
+  if(draft.photo){ im.src = draft.photo; im.hidden = false; ph.hidden = true; }
+  else { im.removeAttribute("src"); im.hidden = true; ph.hidden = false; }
+}
+
+function renderSexSeg(){
+  var box = $("#dogSex");
+  clear(box);
+  SEXES.forEach(function(s){
+    var b = el("button", "", s.label);
+    b.type = "button";
+    if(draft.sex === s.v) b.classList.add("sel");
+    b.setAttribute("aria-pressed", draft.sex === s.v ? "true" : "false");
+    b.addEventListener("click", function(){
+      draft.sex = (draft.sex === s.v) ? "" : s.v;
+      renderSexSeg();
+    });
+    box.appendChild(b);
+  });
+}
+
+function renderSkips(){
+  var box = $("#normSkips");
+  clear(box);
+  SKIPS.forEach(function(s){
+    var b = el("button", "opt");
+    b.type = "button";
+    var mark = el("div", "mark"); mark.innerHTML = tick();
+    var txt = el("div", "txt");
+    txt.appendChild(el("div", "lbl", s.label));
+    if(s.desc) txt.appendChild(el("div", "desc", s.desc));
+    b.appendChild(mark); b.appendChild(txt);
+    if(draft.skips === s.v) b.classList.add("sel");
+    b.setAttribute("aria-pressed", draft.skips === s.v ? "true" : "false");
+    b.addEventListener("click", function(){
+      draft.skips = s.v;
+      renderSkips();
+    });
+    box.appendChild(b);
+  });
+}
+
+function renderLimpNorm(){
+  var box = $("#normLimp");
+  clear(box);
+  LIMP_SCALE.forEach(function(s){
+    var b = el("button", "");
+    b.type = "button";
+    b.appendChild(el("div", "n", String(s.n)));
+    b.appendChild(el("div", "t", s.t));
+    if(draft.limpNorm === s.n) b.classList.add("sel");
+    b.setAttribute("aria-pressed", draft.limpNorm === s.n ? "true" : "false");
+    b.addEventListener("click", function(){
+      draft.limpNorm = s.n;
+      if(s.n === 0) draft.limpPaw = "none";
+      $("#normLimpText").textContent = limpText(s.n);
+      $("#normPawField").hidden = (s.n === 0);
+      renderLimpNorm();
+      renderNormPaws();
+    });
+    box.appendChild(b);
+  });
+  $("#normLimpText").textContent = limpText(draft.limpNorm);
+  $("#normPawField").hidden = (draft.limpNorm === 0);
+}
+
+function renderNormPaws(){
+  var box = $("#normPaw");
+  clear(box);
+  PAWS.forEach(function(p){
+    if(p.v === "none") return;
+    var b = el("button", p.v === "vary" ? "wide" : "", p.label);
+    b.type = "button";
+    if(draft.limpPaw === p.v) b.classList.add("sel");
+    b.setAttribute("aria-pressed", draft.limpPaw === p.v ? "true" : "false");
+    b.addEventListener("click", function(){
+      draft.limpPaw = p.v;
+      renderNormPaws();
+    });
+    box.appendChild(b);
+  });
+}
+
+function readProfileForm(){
+  var t = parseFloat(String($("#normTemp").value).replace(",", "."));
+  return normalizeProfile({
+    schema: 3,
+    name: getVal("dogName") || "Миша",
+    photo: draft.photo || null,
+    birth: getVal("dogBirth"),
+    weight: getVal("dogWeight"),
+    breed: getVal("dogBreed"),
+    sex: draft.sex || "",
+    diagnoses: getVal("dogDiagnoses"),
+    allergies: getVal("dogAllergies"),
+    bannedMeds: getVal("dogBanned"),
+    vetName: getVal("dogVet"),
+    mealsPerDay: getVal("mealsPerDay"),
+    portion: getVal("portion"),
+    medFood: getVal("medFood"),
+    skips: draft.skips,
+    limpNorm: draft.limpNorm,
+    limpPaw: draft.limpNorm === 0 ? "none" : (draft.limpPaw || "none"),
+    limpWhen: getVal("limpWhen"),
+    stoolFreq: getVal("stoolFreq"),
+    giNotes: getVal("giNotes"),
+    tempNorm: isFinite(t) ? Math.round(t * 10) / 10 : null,
+    checkAM: getVal("checkAM") || "09:00",
+    checkPM: getVal("checkPM") || "20:00",
+    clinicName: getVal("clinicName"),
+    clinicPhone: getVal("clinicPhone"),
+    clinicAddr: getVal("clinicAddr"),
+    clinic24Name: getVal("clinic24Name"),
+    clinic24Phone: getVal("clinic24Phone"),
+    clinic24Addr: getVal("clinic24Addr")
+  });
+}
+
+$("#photoBtn").addEventListener("click", function(){ $("#photoInput").click(); });
+$("#photoImg").addEventListener("error", function(){
+  if(draft.photo && draft.photo.indexOf("data:") !== 0){ draft.photo = null; showPhoto(); }
+});
+$("#photoInput").addEventListener("change", function(){
+  var file = this.files && this.files[0];
+  this.value = "";
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var img = new Image();
+    img.onload = function(){
+      var size = 320;
+      var c = document.createElement("canvas");
+      c.width = size; c.height = size;
+      var s = Math.min(img.width, img.height);
+      c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+      try{ draft.photo = c.toDataURL("image/jpeg", 0.82); }catch(e){ draft.photo = reader.result; }
+      showPhoto();
+    };
+    img.onerror = function(){ draft.photo = reader.result; showPhoto(); };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+$("#setupSave").addEventListener("click", function(){
+  profile = readProfileForm();
+  if(!save(KEY_PROFILE, profile)){
+    alert("Не удалось сохранить — возможно, не хватает места. Попробуйте фото поменьше.");
+    return;
+  }
+  renderHome();
+  show("s-home");
+});
+
+$("#setupClose").addEventListener("click", function(){ renderHome(); show("s-home"); });
+$("#toSettings").addEventListener("click", function(){ renderSetup(profile); show("s-setup"); });
+
+$("#exportBtn").addEventListener("click", function(){
+  var payload = {
+    app: "misha-health-tracker", schema: 3,
+    exportedAt: new Date().toISOString(),
+    profile: profile, entries: entries,
+    meds: meds, ticks: ticks, events: events
+  };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "misha-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+  document.body.appendChild(a);
+  a.click();
+  a.parentNode.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+});
+
+$("#importBtn").addEventListener("click", function(){ $("#importInput").click(); });
+$("#importInput").addEventListener("change", function(){
+  var file = this.files && this.files[0];
+  this.value = "";
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var data;
+    try{ data = JSON.parse(reader.result); }
+    catch(e){ alert("Не удалось прочитать файл."); return; }
+    if(!data || data.app !== "misha-health-tracker" || !data.profile){
+      alert("Это не резервная копия Misha Health Tracker.");
+      return;
+    }
+    if(!confirm("Заменить текущий профиль и весь дневник данными из копии?")) return;
+    profile = normalizeProfile(data.profile);
+    entries = Array.isArray(data.entries) ? data.entries : [];
+    meds = Array.isArray(data.meds) ? data.meds : [];
+    ticks = Array.isArray(data.ticks) ? data.ticks : [];
+    events = Array.isArray(data.events) ? data.events : [];
+    save(KEY_PROFILE, profile);
+    save(KEY_ENTRIES, entries);
+    save(KEY_MEDS, meds);
+    save(KEY_TICKS, ticks);
+    save(KEY_EVENTS, events);
+    renderSetup(profile);
+    renderHome();
+    show("s-home");
+    alert("Данные восстановлены из копии.");
+  };
+  reader.readAsText(file);
+});
+
+$("#wipeBtn").addEventListener("click", function(){
+  if(!confirm("Удалить профиль Миши и весь дневник? Это нельзя отменить.")) return;
+  if(!confirm("Точно удалить всё?")) return;
+  drop(KEY_PROFILE); drop(KEY_ENTRIES); drop(KEY_REMINDER); drop(KEY_NOTIFIED);
+  drop(KEY_MEDS); drop(KEY_TICKS); drop(KEY_EVENTS); drop(KEY_REPORTNOTES);
+  meds = []; ticks = []; events = [];
+  profile = null;
+  entries = [];
+  renderSetup(null);
+  show("s-setup");
+});
+
+/* ══════════════════ Расписание и напоминания ══════════════════ */
+
+var KEY_NOTIFIED = "misha.notified";
+var WINDOW_MS = 8 * 3600 * 1000;   /* сколько времени после плановой отметки окно ещё «открыто» */
+var GRACE_MS = 2 * 3600 * 1000;    /* проверка чуть раньше срока тоже засчитывается за окно */
+var REPEAT_MS = 30 * 60 * 1000;    /* один мягкий повтор напоминания */
+
+function scheduleTimes(){
+  var p = profile || {};
+  var out = [];
+  [p.checkAM || "09:00", p.checkPM || "20:00"].forEach(function(t){
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(t));
+    if(m) out.push({ h:+m[1], m:+m[2], label:(+m[1] < 12 ? "утро" : "вечер") });
+  });
+  return out;
+}
+function dueAt(baseDate, t){
+  var d = new Date(baseDate);
+  d.setHours(t.h, t.m, 0, 0);
+  return d;
+}
+function nextDue(){
+  var now = new Date();
+  var cand = [];
+  scheduleTimes().forEach(function(t){
+    cand.push(dueAt(now, t));
+    var tm = new Date(now); tm.setDate(tm.getDate() + 1);
+    cand.push(dueAt(tm, t));
+  });
+  cand.sort(function(a, b){ return a - b; });
+  for(var i=0;i<cand.length;i++) if(cand[i] > now) return cand[i];
+  return null;
+}
+function openWindow(){
+  var now = Date.now();
+  var best = null;
+  scheduleTimes().forEach(function(t){
+    var due = dueAt(new Date(), t).getTime();
+    if(now >= due && now < due + WINDOW_MS && (!best || due > best.due)) best = { due:due, label:t.label };
+  });
+  if(!best) return null;
+  best.done = !!(entries.length && entries[0].ts >= best.due - GRACE_MS);
+  return best;
+}
+
+function renderNext(){
+  var box = $("#homeNext");
+  clear(box);
+  if(!scheduleTimes().length){ box.hidden = true; return; }
+  var w = openWindow();
+  if(w && !w.done){
+    box.hidden = false;
+    box.appendChild(el("b", "", "Проверка на " + w.label + ". "));
+    box.appendChild(document.createTextNode("Отметьте состояние Миши — это меньше минуты."));
+    return;
+  }
+  var nd = nextDue();
+  if(!nd){ box.hidden = true; return; }
+  var today = nd.toDateString() === new Date().toDateString();
+  box.hidden = false;
+  box.appendChild(el("b", "", "Следующая проверка "));
+  box.appendChild(document.createTextNode("— " + (today ? "сегодня" : "завтра") + " в " + fmtTime.format(nd) + "."));
+}
+
+function updateStartButton(){
+  var b = $("#startCheck");
+  if(!b) return;
+  var w = openWindow();
+  if(w && w.done){ b.className = "btn soft"; b.textContent = "Проверить ещё раз"; }
+  else { b.className = "btn primary"; b.textContent = "Начать проверку"; }
+}
+
+function notifyReady(){
+  return (typeof Notification !== "undefined") && Notification.permission === "granted";
+}
+function fireNotice(text){
+  try{ new Notification("Misha Health Tracker", { body:text, tag:"misha-check" }); }catch(e){}
+}
+
+function scheduleTick(){
+  if(!notifyReady()) return;
+  var map = load(KEY_NOTIFIED, {});
+  if(!map || typeof map !== "object") map = {};
+  var now = Date.now();
+  var changed = false;
+  scheduleTimes().forEach(function(t){
+    var due = dueAt(new Date(), t).getTime();
+    if(now < due || now >= due + WINDOW_MS) return;
+    if(entries.length && entries[0].ts >= due - GRACE_MS) return;
+    var key = new Date(due).toISOString().slice(0, 13) + "h" + t.h;
+    var rec = map[key];
+    if(!rec){
+      fireNotice("Время коротко отметить состояние Миши. Обычно это меньше минуты.");
+      map[key] = { at:now }; changed = true;
+    }else if(!rec.repeated && now - rec.at >= REPEAT_MS){
+      fireNotice("Если сейчас неудобно, проверку можно пропустить без последствий.");
+      rec.repeated = true; changed = true;
+    }
+  });
+  Object.keys(map).forEach(function(k){
+    var d = new Date(k.slice(0, 13) + ":00:00Z");
+    if(isFinite(d) && now - d.getTime() > 3 * 86400000){ delete map[k]; changed = true; }
+  });
+  if(changed) save(KEY_NOTIFIED, map);
+}
+
+function buildIcs(){
+  var now = new Date();
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function stampUTC(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+  }
+  function localStamp(d){
+    return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "T" +
+           pad(d.getHours()) + pad(d.getMinutes()) + "00";
+  }
+  var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Misha Health Tracker//RU//", "CALSCALE:GREGORIAN"];
+  scheduleTimes().forEach(function(t, i){
+    var start = dueAt(now, t);
+    if(start < now) start.setDate(start.getDate() + 1);
+    lines.push(
+      "BEGIN:VEVENT",
+      "UID:misha-check-" + i + "-" + t.h + t.m + "@local",
+      "DTSTAMP:" + stampUTC(now),
+      "DTSTART:" + localStamp(start),
+      "DURATION:PT10M",
+      "RRULE:FREQ=DAILY",
+      "SUMMARY:Проверка Миши — " + t.label,
+      "DESCRIPTION:Коротко отметить состояние Миши. Обычно меньше минуты.",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Проверка Миши", "TRIGGER:PT0M", "END:VALARM",
+      "END:VEVENT"
+    );
+  });
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+}
+
+$("#notifyBtn").addEventListener("click", function(){
+  var b = $("#notifyBtn");
+  if(typeof Notification === "undefined"){ b.textContent = "Этот браузер не умеет напоминания"; return; }
+  Notification.requestPermission().then(function(perm){
+    if(perm === "granted"){ b.textContent = "Напоминания включены"; b.disabled = true; scheduleTick(); }
+    else if(perm === "denied"){ b.textContent = "Уведомления запрещены в настройках браузера"; }
+  });
+});
+
+$("#icsBtn").addEventListener("click", function(){
+  var blob = new Blob([buildIcs()], { type:"text/calendar" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "misha-check-reminders.ics";
+  document.body.appendChild(a);
+  a.click();
+  a.parentNode.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+});
+
+/* ══════════════════ Экран 2: главный ══════════════════ */
+
+function setReminder(ms){ save(KEY_REMINDER, { at: Date.now() + ms }); }
+
+function renderReminder(){
+  var box = $("#homeReminder");
+  clear(box);
+  var r = load(KEY_REMINDER, null);
+  if(!r || !r.at){ box.hidden = true; return; }
+  box.hidden = false;
+  if(r.at > Date.now()){
+    box.appendChild(el("b", "", "Повторная проверка "));
+    box.appendChild(document.createTextNode("— после " + fmtTime.format(new Date(r.at)) + "."));
+  }else{
+    box.appendChild(el("b", "", "Пора повторить проверку Миши. "));
+    box.appendChild(document.createTextNode("Понаблюдали — отметьте, как он сейчас."));
+  }
+}
+
+function renderHome(){
+  var p = profile || normalizeProfile({});
+
+  var hero = $("#homeHero");
+  clear(hero);
+  if(p.photo){
+    var im = el("img", "avatar");
+    im.src = p.photo;
+    im.alt = "Фото " + p.name;
+    im.addEventListener("error", function(){ if(im.parentNode) im.parentNode.removeChild(im); });
+    hero.appendChild(im);
+  }
+  var hcol = el("div", "hcol");
+  hcol.appendChild(el("div", "name", p.name));
+  var caption = el("div", "caption");
+  hcol.appendChild(caption);
+  hero.appendChild(hcol);
+
+  var last = null;
+  for(var li = 0; li < entries.length; li++){ if(entries[li].type !== "walk"){ last = entries[li]; break; } }
+  var box = $("#homeLast");
+  clear(box);
+
+  if(!last){
+    caption.textContent = "Проверок пока не было";
+    box.appendChild(el("div", "empty", "Первая проверка займёт минуту — по одному вопросу на экран."));
+  }else{
+    caption.textContent = "Последняя проверка";
+    var row = el("div", "row");
+    row.appendChild(el("div", "status-dot s-" + last.status));
+    row.appendChild(el("div", "title", STATUS_TEXT[last.status].title));
+    row.appendChild(el("div", "when", whenText(last.ts)));
+    box.appendChild(row);
+
+    var reasons = last.red.concat(last.yellow);
+    var lines = el("div", "lines");
+    if(reasons.length){
+      reasons.slice(0, 3).forEach(function(r, i){
+        var d = el("div");
+        d.appendChild(el("i", "status-dot s-" + (i < last.red.length ? "red" : "yellow")));
+        d.appendChild(el("span", "", r));
+        lines.appendChild(d);
+      });
+      if(reasons.length > 3) lines.appendChild(el("div", "", "и ещё " + (reasons.length - 3)));
+    }else if(last.status === "neutral"){
+      lines.appendChild(el("div", "", "Часть показателей осталась непроверенной."));
+    }else{
+      lines.appendChild(el("div", "", "Ничего необычного для него не отмечено."));
+    }
+    box.appendChild(lines);
+  }
+
+  var norm = $("#homeNorm");
+  clear(norm);
+  var normBits = [];
+  normBits.push("хромота " + p.limpNorm + (p.limpNorm > 0 ? " (" + pawLabel(p.limpPaw).toLowerCase() + ")" : ""));
+  normBits.push("пропуски еды: " + (p.skips === 0 ? "не бывает" : "до " + p.skips));
+  if(p.tempNorm != null) normBits.push("температура " + p.tempNorm + " °C");
+  norm.appendChild(el("b", "", "Личная норма " + p.name + ": "));
+  norm.appendChild(document.createTextNode(normBits.join(", ") + ". С ней и сравниваем."));
+
+  renderReminder();
+  renderNext();
+  updateStartButton();
+}
+
+$("#startCheck").addEventListener("click", function(){ startCheck(); });
+$("#startQuick").addEventListener("click", function(){ startQuick(); });
+$("#toDiary").addEventListener("click", function(){ renderDiary(); show("s-diary"); });
+
+/* ══════════════════ Экран 3: проверка ══════════════════ */
+
+var step = 0;
+var answers = {};
+var editing = null;   /* id записи в режиме исправления, иначе null */
+
+function startCheck(){
+  editing = null;
+  step = 0;
+  answers = {};
+  renderQuestion();
+  show("s-check");
+}
+
+function editCheck(entry){
+  editing = entry.id;
+  answers = JSON.parse(JSON.stringify(entry.answers || {}));
+  step = 0;
+  renderQuestion();
+  show("s-check");
+}
+
+function resumeCheck(entry){
+  editing = entry.id;
+  answers = JSON.parse(JSON.stringify(entry.answers || {}));
+  step = firstUnanswered(answers);
+  renderQuestion();
+  show("s-check");
+}
+
+function firstUnanswered(a){
+  for(var i=0;i<QUESTIONS.length;i++){
+    var q = QUESTIONS[i];
+    if(q.id === "limp"){ if(a.limp === undefined) return i; }
+    else if(q.id === "temp"){ if(a.temp === undefined && !a.overheat) return i; }
+    else if(a[q.id] === undefined || a[q.id] === "unknown") return i;
+  }
+  return 0;
+}
+
+function renderQuestion(){
+  var q = QUESTIONS[step];
+  var body = $("#checkBody");
+  var foot = $("#checkFoot");
+  clear(body); clear(foot);
+
+  $("#progBar").style.width = Math.round(step / QUESTIONS.length * 100) + "%";
+  $("#progCount").textContent = (step + 1) + " / " + QUESTIONS.length;
+  var track = $(".progress .track");
+  if(track){
+    track.setAttribute("aria-valuemax", QUESTIONS.length);
+    track.setAttribute("aria-valuenow", step + 1);
+    track.setAttribute("aria-valuetext", (step + 1) + " из " + QUESTIONS.length);
+  }
+  $("#checkBack").style.visibility = step === 0 ? "hidden" : "visible";
+
+  var head = el("div", "qhead");
+  head.appendChild(el("h2", "", q.title));
+  if(editing) head.appendChild(el("div", "hint", "Исправление ответов. Меняйте что нужно, остальное просто пролистайте."));
+  else if(q.hint) head.appendChild(el("div", "hint", q.hint));
+  body.appendChild(head);
+
+  if(q.type === "limp"){
+    renderLimpQuestion(body, foot);
+  }else if(q.type === "temp"){
+    renderTempQuestion(body, foot);
+  }else{
+    var opts = el("div", "options");
+    q.options.forEach(function(o){
+      var b = el("button", "opt" + (o.skip ? " skip" : ""));
+      b.type = "button";
+      var mark = el("div", "mark"); mark.innerHTML = tick();
+      var txt = el("div", "txt");
+      txt.appendChild(el("div", "lbl", o.label));
+      if(o.desc) txt.appendChild(el("div", "desc", o.desc));
+      b.appendChild(mark); b.appendChild(txt);
+      var sel = answers[q.id] === o.v;
+      if(sel) b.classList.add("sel");
+      b.setAttribute("aria-pressed", sel ? "true" : "false");
+      b.addEventListener("click", function(){
+        answers[q.id] = o.v;
+        var all = opts.querySelectorAll(".opt");
+        for(var i=0;i<all.length;i++){ all[i].classList.remove("sel"); all[i].setAttribute("aria-pressed", "false"); }
+        b.classList.add("sel"); b.setAttribute("aria-pressed", "true");
+        setTimeout(next, 180);
+      });
+      opts.appendChild(b);
+    });
+    body.appendChild(opts);
+    if(editing){
+      var nx = el("button", "btn soft", step === QUESTIONS.length - 1 ? "Сохранить" : "Дальше без изменений");
+      nx.type = "button";
+      nx.addEventListener("click", next);
+      foot.appendChild(nx);
+    }
+  }
+
+  body.classList.remove("fade"); void body.offsetWidth; body.classList.add("fade");
+}
+
+function renderLimpQuestion(body, foot){
+  var p = profile || {limpNorm:0, limpPaw:"none"};
+  var normLine = el("div", "note");
+  normLine.innerHTML = "<b>Его обычная норма:</b> " + limpText(p.limpNorm) +
+    (p.limpNorm > 0 ? ", " + pawLabel(p.limpPaw).toLowerCase() : "");
+  body.appendChild(normLine);
+
+  var scale = el("div", "scale");
+  LIMP_SCALE.forEach(function(s){
+    var b = el("button", "");
+    b.type = "button";
+    b.appendChild(el("div", "n", String(s.n)));
+    b.appendChild(el("div", "t", s.t));
+    if(answers.limp === s.n) b.classList.add("sel");
+    b.setAttribute("aria-pressed", answers.limp === s.n ? "true" : "false");
+    b.addEventListener("click", function(){
+      answers.limp = s.n;
+      var all = scale.querySelectorAll("button");
+      for(var i=0;i<all.length;i++){ all[i].classList.remove("sel"); all[i].setAttribute("aria-pressed", "false"); }
+      b.classList.add("sel"); b.setAttribute("aria-pressed", "true");
+      if(skipLine) skipLine.classList.remove("sel");
+      if(s.n === 0) answers.limpPaw = "none";
+      else if(!answers.limpPaw || answers.limpPaw === "none")
+        answers.limpPaw = (p.limpPaw && p.limpPaw !== "none") ? p.limpPaw : "";
+      pawWrap.hidden = (s.n === 0);
+      drawPaws();
+    });
+    scale.appendChild(b);
+  });
+  body.appendChild(scale);
+
+  var pawWrap = el("div", "field");
+  pawWrap.appendChild(el("label", "", "На какую лапу?"));
+  var pawGrid = el("div", "paws");
+  pawWrap.appendChild(pawGrid);
+  pawWrap.hidden = !(answers.limp > 0);
+  body.appendChild(pawWrap);
+
+  function drawPaws(){
+    clear(pawGrid);
+    PAWS.forEach(function(pw){
+      if(pw.v === "none") return;
+      var b = el("button", pw.v === "vary" ? "wide" : "", pw.label);
+      b.type = "button";
+      if(answers.limpPaw === pw.v) b.classList.add("sel");
+      b.setAttribute("aria-pressed", answers.limpPaw === pw.v ? "true" : "false");
+      b.addEventListener("click", function(){
+        answers.limpPaw = pw.v;
+        drawPaws();
+      });
+      pawGrid.appendChild(b);
+    });
+  }
+  drawPaws();
+
+  var skipLine = el("button", "checkline calm");
+  skipLine.type = "button";
+  var sbox = el("div", "box"); sbox.innerHTML = tick();
+  skipLine.appendChild(sbox);
+  skipLine.appendChild(el("span", "", "Не смотрела, как он ходит"));
+  if(answers.limp === null) skipLine.classList.add("sel");
+  skipLine.addEventListener("click", function(){
+    var on = !skipLine.classList.contains("sel");
+    skipLine.classList.toggle("sel", on);
+    if(on){
+      answers.limp = null;
+      answers.limpPaw = "none";
+      var all = scale.querySelectorAll("button");
+      for(var i=0;i<all.length;i++){ all[i].classList.remove("sel"); all[i].setAttribute("aria-pressed", "false"); }
+      pawWrap.hidden = true;
+    }
+  });
+  body.appendChild(skipLine);
+
+  var nextBtn = el("button", "btn primary", editing && step === QUESTIONS.length - 1 ? "Сохранить" : "Дальше");
+  nextBtn.type = "button";
+  nextBtn.addEventListener("click", next);
+  foot.appendChild(nextBtn);
+}
+
+function renderTempQuestion(body, foot){
+  var p = profile || {};
+  if(p.tempNorm != null){
+    var n = el("div", "note");
+    n.innerHTML = "<b>Личная норма:</b> " + p.tempNorm + " °C";
+    body.appendChild(n);
+  }
+
+  var f = el("div", "field");
+  f.appendChild(el("label", "", "Температура сейчас, °C"));
+  var inp = el("input");
+  inp.type = "text";
+  inp.inputMode = "decimal";
+  inp.placeholder = "38.5";
+  inp.setAttribute("autocomplete", "off");
+  if(typeof answers.temp === "number") inp.value = String(answers.temp);
+  f.appendChild(inp);
+  body.appendChild(f);
+
+  var notMeasured = el("button", "checkline calm");
+  notMeasured.type = "button";
+  var box1 = el("div", "box"); box1.innerHTML = tick();
+  notMeasured.appendChild(box1);
+  notMeasured.appendChild(el("span", "", "Не мерила температуру"));
+  if(answers.temp === null) notMeasured.classList.add("sel");
+  body.appendChild(notMeasured);
+
+  var overheat = el("button", "checkline");
+  overheat.type = "button";
+  var box2 = el("div", "box"); box2.innerHTML = tick();
+  overheat.appendChild(box2);
+  overheat.appendChild(el("span", "", "Горячий, тяжело дышит даже после отдыха в прохладе"));
+  if(answers.overheat) overheat.classList.add("sel");
+  body.appendChild(overheat);
+
+  inp.addEventListener("input", function(){
+    var v = parseFloat(inp.value.replace(",", "."));
+    answers.temp = isFinite(v) ? Math.round(v * 10) / 10 : undefined;
+    if(typeof answers.temp === "number") notMeasured.classList.remove("sel");
+  });
+  notMeasured.addEventListener("click", function(){
+    var on = !notMeasured.classList.contains("sel");
+    notMeasured.classList.toggle("sel", on);
+    if(on){ answers.temp = null; inp.value = ""; }
+    else { answers.temp = undefined; }
+  });
+  overheat.addEventListener("click", function(){
+    var on = !overheat.classList.contains("sel");
+    overheat.classList.toggle("sel", on);
+    answers.overheat = on;
+  });
+
+  var nextBtn = el("button", "btn primary", editing ? "Сохранить" : "Готово");
+  nextBtn.type = "button";
+  nextBtn.addEventListener("click", next);
+  foot.appendChild(nextBtn);
+}
+
+function next(){
+  if(step < QUESTIONS.length - 1){
+    step++;
+    renderQuestion();
+  }else{
+    finishCheck();
+  }
+}
+
+$("#checkBack").addEventListener("click", function(){
+  if(step > 0){ step--; renderQuestion(); }
+});
+$("#checkExit").addEventListener("click", function(){
+  editing = null;
+  renderHome();
+  show("s-home");
+});
+
+function findEntry(id){
+  for(var i=0;i<entries.length;i++) if(entries[i].id === id) return entries[i];
+  return null;
+}
+
+function fmtAns(field, a){
+  if(field === "limp"){
+    var v = a.limp;
+    if(v === null || v === undefined) return "не смотрели";
+    var t = limpText(v).replace(/^\d+ — /, "");
+    if(v > 0 && a.limpPaw && a.limpPaw !== "none") t += ", " + pawLabel(a.limpPaw).toLowerCase();
+    return t;
+  }
+  if(field === "temp") return (typeof a.temp === "number") ? a.temp.toFixed(1) + " °C" : "не мерили";
+  if(field === "overheat") return a.overheat ? "признаки перегрева" : "нет";
+  var q = qById(field);
+  if(q && q.short && a[field] !== undefined) return q.short[a[field]] || String(a[field]);
+  return (a[field] === undefined) ? "—" : String(a[field]);
+}
+
+function diffAnswers(oldA, newA){
+  oldA = oldA || {}; newA = newA || {};
+  var fields = ["general","collapse","urine","gums","appetite","limp","vomit","breathing","temp","overheat"];
+  var out = [];
+  fields.forEach(function(k){
+    var from = fmtAns(k, oldA), to = fmtAns(k, newA);
+    if(from !== to){
+      out.push({ field: (k === "overheat" ? "Перегрев" : (Q_TITLES[k] || k)), from: from, to: to });
+    }
+  });
+  return out;
+}
+
+function finishCheck(){
+  var res = evaluate(answers, profile);
+
+  if(editing){
+    var e = findEntry(editing);
+    editing = null;
+    if(e){
+      var prev = e.answers || {};
+      var changes = diffAnswers(prev, answers);
+      if(changes.length){
+        if(!e.answersOriginal) e.answersOriginal = JSON.parse(JSON.stringify(prev));
+        e.revisions = e.revisions || [];
+        e.revisions.push({ ts: Date.now(), changes: changes });
+        e.editedTs = Date.now();
+      }
+      e.answers = JSON.parse(JSON.stringify(answers));
+      e.status = res.status; e.red = res.red; e.yellow = res.yellow; e.ok = res.ok;
+      e.rulesVersion = RULES.version;
+      save(KEY_ENTRIES, entries);
+      renderResult(e);
+      renderHome();
+      show("s-result");
+      return;
+    }
+  }
+
+  drop(KEY_REMINDER);
+  var entry = {
+    id: makeId(),
+    ts: Date.now(),
+    type: "full",
+    rulesVersion: RULES.version,
+    status: res.status,
+    red: res.red,
+    yellow: res.yellow,
+    ok: res.ok,
+    answers: JSON.parse(JSON.stringify(answers))
+  };
+  entries.unshift(entry);
+  if(entries.length > 400) entries.length = 400;
+  save(KEY_ENTRIES, entries);
+  renderResult(entry);
+  renderHome();
+  show("s-result");
+}
+
+/* ══════════════════ Экран 3б: «Что-то не так» ══════════════════ */
+
+var quickPicked = {};
+
+function startQuick(){
+  quickPicked = {};
+  var list = $("#quickList");
+  clear(list);
+  QUICK.forEach(function(q){
+    var b = el("button", "checkline");
+    b.type = "button";
+    var box = el("div", "box"); box.innerHTML = tick();
+    b.appendChild(box);
+    b.appendChild(el("span", "", q.label));
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", function(){
+      quickPicked[q.v] = !quickPicked[q.v];
+      b.classList.toggle("sel", !!quickPicked[q.v]);
+      b.setAttribute("aria-pressed", quickPicked[q.v] ? "true" : "false");
+    });
+    list.appendChild(b);
+  });
+  show("s-quick");
+}
+
+$("#quickBack").addEventListener("click", function(){ show("s-home"); });
+
+$("#quickDone").addEventListener("click", function(){
+  var red = [], yellow = [], ok = [];
+  QUICK.forEach(function(q){
+    if(!quickPicked[q.v]) return;
+    if(q.level === "red") red.push(q.reason);
+    else if(q.redIf && quickPicked[q.redIf]) red.push(q.reason);
+    else yellow.push(q.reason);
+  });
+  var status = red.length ? "red" : (yellow.length ? "yellow" : "green");
+  if(status === "green") ok.push("Ни одного жёсткого признака не отмечено. Если всё же тревожно — пройдите полную проверку.");
+
+  var entry = {
+    id: makeId(),
+    ts: Date.now(),
+    type: "quick",
+    rulesVersion: RULES.version,
+    status: status,
+    red: red,
+    yellow: yellow,
+    ok: ok,
+    answers: null
+  };
+  entries.unshift(entry);
+  if(entries.length > 400) entries.length = 400;
+  save(KEY_ENTRIES, entries);
+  renderResult(entry);
+  renderHome();
+  show("s-result");
+});
+
+/* ══════════════════ Экран 4: результат ══════════════════ */
+
+function renderResult(entry){
+  $("#resultWhen").textContent = (entry.type === "quick" ? "быстрая проверка · " : "") +
+    whenText(entry.ts) + (entry.editedTs ? " · изменено" : "");
+
+  var body = $("#resultBody");
+  clear(body);
+
+  var card = el("div", "status-card st-" + entry.status);
+  var glyph = el("div", "glyph");
+  glyph.innerHTML = statusGlyph(entry.status);
+  card.appendChild(glyph);
+  card.appendChild(el("h2", "", STATUS_TEXT[entry.status].title));
+  card.appendChild(el("p", "", STATUS_TEXT[entry.status].line));
+  body.appendChild(card);
+
+  if(entry.red.length || entry.yellow.length){
+    var wrap = el("div", "card reasons");
+    wrap.appendChild(el("h3", "", "Что к этому привело"));
+    var ul = el("ul");
+    entry.red.forEach(function(r){
+      var li = el("li");
+      li.appendChild(el("i", "status-dot s-red"));
+      li.appendChild(el("span", "", r));
+      ul.appendChild(li);
+    });
+    entry.yellow.forEach(function(r){
+      var li = el("li");
+      li.appendChild(el("i", "status-dot s-yellow"));
+      li.appendChild(el("span", "", r));
+      ul.appendChild(li);
+    });
+    wrap.appendChild(ul);
+    body.appendChild(wrap);
+  }
+
+  if(entry.ok && entry.ok.length){
+    var okWrap = el("div", "card reasons");
+    okWrap.appendChild(el("h3", "", entry.status === "neutral" ? "Что осталось непроверенным" : "Учтено как его норма"));
+    var dotCls = entry.status === "neutral" ? "s-neutral" : "s-green";
+    var ul2 = el("ul");
+    entry.ok.forEach(function(r){
+      var li = el("li", "ok");
+      li.appendChild(el("i", "status-dot " + dotCls));
+      li.appendChild(el("span", "", r));
+      ul2.appendChild(li);
+    });
+    okWrap.appendChild(ul2);
+    body.appendChild(okWrap);
+  }
+
+  var p = profile || {};
+
+  if(entry.status === "red"){
+    var noteR = el("div", "note");
+    noteR.innerHTML = "<b>Пока едете к врачу:</b> держите его в покое, не кормите, обеспечьте доступ к воде, если он пьёт сам. Скажите врачу, что именно вы заметили и когда это началось. Лекарства без назначения не давайте.";
+    body.appendChild(noteR);
+    if(p.clinicAddr || p.clinic24Addr){
+      var addr = el("div", "note");
+      var parts = [];
+      if(p.clinicAddr) parts.push((p.clinicName || "Клиника") + ": " + p.clinicAddr);
+      if(p.clinic24Addr) parts.push((p.clinic24Name || "Круглосуточная") + ": " + p.clinic24Addr);
+      addr.textContent = parts.join(" · ");
+      body.appendChild(addr);
+    }
+  }else if(entry.status === "yellow"){
+    var noteY = el("div", "note");
+    noteY.innerHTML = "<b>Что делать сейчас:</b> дайте отдохнуть, следите за водой и едой, повторите проверку через несколько часов. Записи из дневника пригодятся врачу.";
+    body.appendChild(noteY);
+  }else if(entry.status === "neutral"){
+    var noteN = el("div", "note");
+    noteN.innerHTML = "<b>Что делать:</b> когда будет возможность, посмотрите непроверенные показатели (цвет мочи и дёсен, дыхание в покое) и пройдите проверку снова.";
+    body.appendChild(noteN);
+  }
+
+  if(entry.type !== "quick") body.appendChild(mediaBlock(entry));
+
+  renderResultFoot(entry);
+}
+
+function renderResultFoot(entry){
+  var foot = $("#resultFoot");
+  clear(foot);
+  var p = profile || {};
+  var hasPrimary = false;
+
+  if(entry.status === "red"){
+    if(p.clinicPhone){
+      foot.appendChild(makeCallBtn("Позвонить: " + (p.clinicName || "клиника"), p.clinicPhone, "primary"));
+      hasPrimary = true;
+    }
+    if(p.clinic24Phone) foot.appendChild(makeCallBtn("Круглосуточная: " + (p.clinic24Name || "клиника"), p.clinic24Phone, "warn"));
+    if(!p.clinicPhone && !p.clinic24Phone){
+      var addc = el("button", "btn soft", "Добавить телефон клиники");
+      addc.type = "button";
+      addc.addEventListener("click", function(){ renderSetup(profile); show("s-setup"); });
+      foot.appendChild(addc);
+    }
+  }else if(entry.status === "yellow"){
+    var rem = el("button", "btn primary", "Напомнить через 3 часа");
+    rem.type = "button";
+    rem.addEventListener("click", function(){
+      setReminder(3 * 3600 * 1000);
+      rem.disabled = true;
+      rem.textContent = "Напоминание поставлено";
+    });
+    foot.appendChild(rem);
+    hasPrimary = true;
+  }else if(entry.status === "neutral" && entry.type === "full"){
+    var cont = el("button", "btn primary", "Досмотреть Мишу");
+    cont.type = "button";
+    cont.addEventListener("click", function(){ resumeCheck(entry); });
+    foot.appendChild(cont);
+    hasPrimary = true;
+  }
+
+  if(entry.type === "full"){
+    var ed = el("button", "btn soft", "Исправить ответы");
+    ed.type = "button";
+    ed.addEventListener("click", function(){ editCheck(entry); });
+    foot.appendChild(ed);
+  }else if(entry.status === "green"){
+    var full = el("button", "btn soft", "Пройти полную проверку");
+    full.type = "button";
+    full.addEventListener("click", function(){ startCheck(); });
+    foot.appendChild(full);
+  }
+
+  var done = el("button", "btn " + (hasPrimary ? "quiet" : "primary"), "Готово");
+  done.type = "button";
+  done.addEventListener("click", function(){ renderHome(); show("s-home"); });
+  foot.appendChild(done);
+
+  var toDiary = el("button", "btn quiet", "Открыть дневник");
+  toDiary.type = "button";
+  toDiary.addEventListener("click", function(){ renderDiary(); show("s-diary"); });
+  foot.appendChild(toDiary);
+}
+
+function makeCallBtn(label, phone, cls){
+  var a = document.createElement("a");
+  a.className = "btn " + cls;
+  a.href = telHref(phone);
+  a.textContent = label;
+  return a;
+}
+
+/* ══════════════════ Экран 5: дневник ══════════════════ */
+
+function answerLines(a){
+  if(!a) return [];
+  var out = [];
+  QUESTIONS.forEach(function(q){
+    if(q.id === "limp"){
+      var v = a.limp;
+      if(v === null || v === undefined){ out.push([Q_TITLES.limp, "не смотрели"]); return; }
+      var txt = limpText(v).replace(/^\d+ — /, "");
+      if(v > 0 && a.limpPaw && a.limpPaw !== "none") txt += ", " + pawLabel(a.limpPaw).toLowerCase();
+      out.push([Q_TITLES.limp, txt]);
+    }else if(q.id === "temp"){
+      var t = a.temp;
+      if(typeof t === "number") out.push([Q_TITLES.temp, t.toFixed(1) + " °C" + (a.overheat ? " · признаки перегрева" : "")]);
+      else out.push([Q_TITLES.temp, a.overheat ? "не мерили · признаки перегрева" : "не мерили"]);
+    }else if(a[q.id] !== undefined && q.short){
+      out.push([Q_TITLES[q.id], q.short[a[q.id]] || a[q.id]]);
+    }
+  });
+  return out;
+}
+
+function renderDiary(){
+  var list = $("#diaryList");
+  var foot = $("#diaryFoot");
+  clear(list); clear(foot);
+
+  $("#diaryCount").textContent = entries.length
+    ? entries.length + " " + plural(entries.length, "проверка", "проверки", "проверок")
+    : "пока пусто";
+
+  if(!entries.length){
+    list.appendChild(el("div", "empty", "Здесь будут все проверки — с датой, статусом и тем, что его вызвало."));
+    return;
+  }
+
+  entries.forEach(function(entry){
+    var card = el("button", "entry");
+    card.type = "button";
+
+    var head = el("div", "head");
+    head.appendChild(el("i", "status-dot s-" + entry.status));
+    head.appendChild(el("div", "d", STATUS_TEXT[entry.status].title));
+    if(entry.editedTs) head.appendChild(el("div", "tag", "изменено"));
+    head.appendChild(el("div", "chev", whenText(entry.ts)));
+    card.appendChild(head);
+
+    var reasons = entry.red.concat(entry.yellow);
+    var prefix = entry.type === "quick" ? "Быстрая проверка. " : (entry.type === "walk" ? "После прогулки. " : "");
+    var sum;
+    if(entry.type === "walk"){
+      sum = ((entry.ok || []).join(" · ") || "заметка") + (entry.note ? " — " + entry.note : "");
+    }else{
+      sum = reasons.length ? reasons.join(" · ") : "Ничего необычного для него";
+    }
+    card.appendChild(el("div", "sum", prefix + sum));
+
+    var detail = el("div", "detail");
+
+    if(entry.type === "walk"){
+      var wl = el("div", "rs");
+      (entry.ok || []).forEach(function(r){
+        var d = el("div");
+        d.appendChild(el("i", "status-dot s-log"));
+        d.appendChild(el("span", "", r));
+        wl.appendChild(d);
+      });
+      if(entry.note) wl.appendChild(el("div", "hint", entry.note));
+      detail.appendChild(wl);
+    }else{
+      if(reasons.length){
+        var rs = el("div", "rs");
+        entry.red.forEach(function(r){
+          var d = el("div");
+          d.appendChild(el("i", "status-dot s-red"));
+          d.appendChild(el("span", "", r));
+          rs.appendChild(d);
+        });
+        entry.yellow.forEach(function(r){
+          var d = el("div");
+          d.appendChild(el("i", "status-dot s-yellow"));
+          d.appendChild(el("span", "", r));
+          rs.appendChild(d);
+        });
+        detail.appendChild(rs);
+      }
+      answerLines(entry.answers).forEach(function(pair){
+        var qa = el("div", "qa");
+        qa.appendChild(el("b", "", pair[0]));
+        qa.appendChild(el("span", "", pair[1]));
+        detail.appendChild(qa);
+      });
+      var meta = el("div", "qa");
+      meta.appendChild(el("b", "", "Версия правил"));
+      meta.appendChild(el("span", "", entry.rulesVersion || "н/д"));
+      detail.appendChild(meta);
+    }
+
+    detail.appendChild(mediaBlock(entry));
+
+    if(entry.revisions && entry.revisions.length){
+      var rev = el("div", "rev");
+      rev.appendChild(el("div", "rev-h", "Журнал изменений"));
+      entry.revisions.forEach(function(r){
+        var w = whenText(r.ts);
+        (r.changes || []).forEach(function(c){
+          rev.appendChild(el("div", "rev-i", c.field + ": «" + c.from + "» → «" + c.to + "»  ·  " + w));
+        });
+      });
+      detail.appendChild(rev);
+    }
+    card.appendChild(detail);
+
+    card.addEventListener("click", function(){ card.classList.toggle("open"); });
+    list.appendChild(card);
+  });
+
+  var reportBtn = el("button", "btn soft", "Отчёт ветеринару");
+  reportBtn.type = "button";
+  reportBtn.addEventListener("click", function(){ startReport(); });
+  foot.appendChild(reportBtn);
+
+  var clearBtn = el("button", "btn quiet", "Очистить дневник");
+  clearBtn.type = "button";
+  clearBtn.addEventListener("click", function(){
+    if(confirm("Удалить все записи дневника? Профиль и личная норма сохранятся.")){
+      entries = [];
+      save(KEY_ENTRIES, entries);
+      renderDiary();
+      renderHome();
+    }
+  });
+  foot.appendChild(clearBtn);
+}
+
+function plural(n, one, few, many){
+  var m10 = n % 10, m100 = n % 100;
+  if(m10 === 1 && m100 !== 11) return one;
+  if(m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+$("#diaryBack").addEventListener("click", function(){ renderHome(); show("s-home"); });
+
+/* ══════════════════ Календарь · лекарства · клещ ══════════════════ */
+
+function parseDate(s){
+  if(!s) return null;
+  var d = new Date(String(s).length === 10 ? (s + "T12:00:00") : s);
+  return isFinite(d) ? d : null;
+}
+function isoDay(d){
+  d = d || new Date();
+  var p = function(n){ return (n < 10 ? "0" : "") + n; };
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function dayDiff(target){
+  var d = parseDate(target); if(!d) return null;
+  var a = new Date(); a.setHours(0, 0, 0, 0);
+  var b = new Date(d); b.setHours(0, 0, 0, 0);
+  return Math.round((b - a) / 86400000);
+}
+function whenDayText(target){
+  var n = dayDiff(target);
+  if(n === null) return "дата не указана";
+  if(n === 0) return "сегодня";
+  if(n === 1) return "завтра";
+  if(n === -1) return "вчера";
+  var base = fmtDate.format(parseDate(target));
+  if(n > 1) return base + " · через " + n + " " + plural(n, "день", "дня", "дней");
+  return base + " · " + (-n) + " " + plural(-n, "день", "дня", "дней") + " назад";
+}
+function duePill(target, doneFlag){
+  var span = el("span", "pill");
+  if(doneFlag){ span.className = "pill ok"; span.textContent = "сделано"; return span; }
+  var n = dayDiff(target);
+  if(n === null){ span.textContent = "без даты"; return span; }
+  if(n < 0){ span.className = "pill over"; span.textContent = "просрочено"; }
+  else if(n === 0){ span.className = "pill due"; span.textContent = "сегодня"; }
+  else if(n <= 2){ span.className = "pill due"; span.textContent = n === 1 ? "завтра" : "скоро"; }
+  else span.textContent = "через " + n + " дн.";
+  return span;
+}
+
+function downscaleImage(file, maxSize, cb){
+  var reader = new FileReader();
+  reader.onload = function(){
+    var img = new Image();
+    img.onload = function(){
+      var scale = Math.min(1, maxSize / Math.max(img.width || 1, img.height || 1));
+      var c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round((img.width || maxSize) * scale));
+      c.height = Math.max(1, Math.round((img.height || maxSize) * scale));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      try{ cb(c.toDataURL("image/jpeg", 0.8)); }catch(e){ cb(reader.result); }
+    };
+    img.onerror = function(){ cb(reader.result); };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function fieldInput(labelText, value, opts){
+  opts = opts || {};
+  var f = el("div", "field");
+  if(labelText) f.appendChild(el("label", "", labelText));
+  var inp = el(opts.textarea ? "textarea" : "input");
+  if(!opts.textarea) inp.type = opts.type || "text";
+  if(opts.inputMode) inp.inputMode = opts.inputMode;
+  if(opts.placeholder) inp.placeholder = opts.placeholder;
+  inp.value = value || "";
+  inp.setAttribute("autocomplete", "off");
+  f.appendChild(inp);
+  f._input = inp;
+  return f;
+}
+function segControl(options, value, onPick){
+  var box = el("div", "seg");
+  options.forEach(function(o){
+    var b = el("button", value === o.v ? "sel" : "", o.label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", value === o.v ? "true" : "false");
+    b.addEventListener("click", function(){
+      var all = box.querySelectorAll("button");
+      for(var i=0;i<all.length;i++){ all[i].classList.remove("sel"); all[i].setAttribute("aria-pressed", "false"); }
+      b.classList.add("sel"); b.setAttribute("aria-pressed", "true");
+      onPick(o.v);
+    });
+    box.appendChild(b);
+  });
+  return box;
+}
+
+/* ═══ Лекарства и обработки (§7) ═══ */
+
+var MED_KINDS = [ {v:"med", label:"Лекарство"}, {v:"treatment", label:"Обработка"} ];
+var MED_LOG = [ {v:"given", label:"Дано"}, {v:"skipped", label:"Пропущено"}, {v:"cancelled", label:"Отменено врачом"} ];
+function medLogLabel(v){ for(var i=0;i<MED_LOG.length;i++) if(MED_LOG[i].v === v) return MED_LOG[i].label; return v; }
+
+function renderMeds(){
+  var body = $("#medsBody"), foot = $("#medsFoot");
+  clear(body); clear(foot);
+  var active = meds.filter(function(m){ return !m.archived; });
+  var archived = meds.filter(function(m){ return m.archived; });
+  $("#medsSub").textContent = meds.length ? active.length + " активных" : "пока пусто";
+
+  if(!meds.length)
+    body.appendChild(el("div", "empty", "Здесь — лекарства и обработки: доза, курс, следующая дата и отметки «дано / пропущено». Приложение ничего не рекомендует, только хранит."));
+
+  active.forEach(function(m){ body.appendChild(medCard(m)); });
+  if(archived.length){
+    body.appendChild(el("div", "hint", "Завершённые"));
+    archived.forEach(function(m){ body.appendChild(medCard(m)); });
+  }
+
+  var add = el("button", "btn primary", "＋ Добавить лекарство или обработку");
+  add.type = "button";
+  add.addEventListener("click", function(){ openMedForm(null); });
+  foot.appendChild(add);
+}
+
+function medCard(m){
+  var card = el("div", "card field");
+  var head = el("div", "rowline");
+  var title = el("div", "grow");
+  title.appendChild(el("div", "", m.name || "Без названия"));
+  var sub = [m.substance, [m.dose, m.unit].filter(Boolean).join(" "), m.timing].filter(Boolean).join(" · ");
+  if(sub) title.appendChild(el("div", "hint", sub));
+  head.appendChild(title);
+  head.appendChild(el("span", "pill", m.kind === "treatment" ? "обработка" : "лекарство"));
+  card.appendChild(head);
+
+  if(m.kind === "treatment" && m.nextDate){
+    var nd = el("div", "rowline");
+    nd.appendChild(el("span", "hint grow", "Следующая: " + whenDayText(m.nextDate)));
+    nd.appendChild(duePill(m.nextDate));
+    card.appendChild(nd);
+  }else if(m.course){
+    card.appendChild(el("div", "hint", "Курс: " + m.course));
+  }
+
+  var lastLog = (m.log && m.log[0]) || null;
+  if(lastLog) card.appendChild(el("div", "hint", "Последняя отметка: " + medLogLabel(lastLog.status).toLowerCase() + " — " + whenText(lastLog.ts)));
+
+  if(!m.archived){
+    var act = el("div", "miniact");
+    ["given", "skipped"].forEach(function(st){
+      var b = el("button", "btn soft", medLogLabel(st));
+      b.type = "button";
+      b.addEventListener("click", function(){
+        m.log = m.log || [];
+        m.log.unshift({ ts: Date.now(), status: st });
+        save(KEY_MEDS, meds);
+        renderMeds();
+      });
+      act.appendChild(b);
+    });
+    var open = el("button", "btn soft", "Открыть");
+    open.type = "button";
+    open.addEventListener("click", function(){ openMedForm(m); });
+    act.appendChild(open);
+    card.appendChild(act);
+  }else{
+    var reopen = el("button", "btn quiet", "Открыть");
+    reopen.type = "button";
+    reopen.addEventListener("click", function(){ openMedForm(m); });
+    card.appendChild(reopen);
+  }
+  return card;
+}
+
+function openMedForm(existing){
+  var body = $("#medsBody"), foot = $("#medsFoot");
+  clear(body); clear(foot);
+  $("#medsSub").textContent = existing ? "редактирование" : "новая запись";
+
+  var m = existing || { id: makeId(), kind: "med", log: [] };
+  var draftKind = m.kind || "med";
+
+  body.appendChild(segControl(MED_KINDS, draftKind, function(v){ draftKind = v; nextLbl(); }));
+
+  var fName = fieldInput("Название", m.name, {placeholder:"Апоквель"});
+  var fSubst = fieldInput("Действующее вещество", m.substance, {placeholder:"оклацитиниб"});
+  var fForm = fieldInput("Форма", m.form, {placeholder:"таблетки"});
+  var fDose = fieldInput("Дозировка", m.dose, {placeholder:"1/2", inputMode:"decimal"});
+  var fUnit = fieldInput("Единицы", m.unit, {placeholder:"таблетка"});
+  var fTiming = fieldInput("Когда и как часто", m.timing, {placeholder:"утром и вечером"});
+  var fCourse = fieldInput("Длительность курса", m.course, {placeholder:"14 дней / постоянно"});
+  var fNext = fieldInput("Дата следующей обработки", m.nextDate, {type:"date"});
+  var fReason = fieldInput("Причина назначения", m.reason, {textarea:true});
+  var fVet = fieldInput("Кто назначил", m.prescriber, {placeholder:"врач, клиника"});
+  var fContra = fieldInput("Противопоказания", m.contra, {textarea:true});
+  var fNotes = fieldInput("Заметки", m.notes, {textarea:true});
+
+  [fName, fSubst, fForm, fDose, fUnit, fTiming, fCourse, fNext, fReason, fVet, fContra, fNotes]
+    .forEach(function(f){ body.appendChild(f); });
+
+  function nextLbl(){
+    var lab = fNext.querySelector("label");
+    if(lab) lab.textContent = draftKind === "treatment" ? "Дата следующей обработки" : "Дата (если курс до даты)";
+  }
+  nextLbl();
+
+  body.appendChild(el("div", "note", "Приложение не подсказывает дозировку и совместимость препаратов — это только к врачу."));
+
+  if(m.log && m.log.length){
+    var logWrap = el("div", "card field");
+    logWrap.appendChild(el("label", "", "Отметки"));
+    m.log.slice(0, 20).forEach(function(x){
+      logWrap.appendChild(el("div", "hint", medLogLabel(x.status) + " — " + whenText(x.ts)));
+    });
+    body.appendChild(logWrap);
+  }
+
+  var saveBtn = el("button", "btn primary", "Сохранить");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    m.kind = draftKind;
+    m.name = fName._input.value.trim();
+    m.substance = fSubst._input.value.trim();
+    m.form = fForm._input.value.trim();
+    m.dose = fDose._input.value.trim();
+    m.unit = fUnit._input.value.trim();
+    m.timing = fTiming._input.value.trim();
+    m.course = fCourse._input.value.trim();
+    m.nextDate = fNext._input.value;
+    m.reason = fReason._input.value.trim();
+    m.prescriber = fVet._input.value.trim();
+    m.contra = fContra._input.value.trim();
+    m.notes = fNotes._input.value.trim();
+    if(meds.indexOf(m) < 0){ m.createdAt = Date.now(); meds.unshift(m); }
+    if(!save(KEY_MEDS, meds)) alert("Не удалось сохранить.");
+    renderMeds();
+  });
+  foot.appendChild(saveBtn);
+
+  if(meds.indexOf(m) >= 0){
+    var arch = el("button", "btn soft", m.archived ? "Вернуть в активные" : "В завершённые");
+    arch.type = "button";
+    arch.addEventListener("click", function(){ m.archived = !m.archived; save(KEY_MEDS, meds); renderMeds(); });
+    foot.appendChild(arch);
+
+    var del = el("button", "btn quiet", "Удалить запись");
+    del.type = "button";
+    del.addEventListener("click", function(){
+      if(!confirm("Удалить эту запись о лекарстве?")) return;
+      meds = meds.filter(function(x){ return x.id !== m.id; });
+      save(KEY_MEDS, meds);
+      renderMeds();
+    });
+    foot.appendChild(del);
+  }
+
+  var cancel = el("button", "btn quiet", "Отмена");
+  cancel.type = "button";
+  cancel.addEventListener("click", renderMeds);
+  foot.appendChild(cancel);
+}
+
+/* ═══ Укус клеща (§6) ═══ */
+
+var TICK_FULL = [ {v:"empty", label:"Пустой"}, {v:"partial", label:"Частично"}, {v:"full", label:"Налился"} ];
+var TICK_CONTROL_DAYS = 21;
+function tickFullLabel(v){ for(var i=0;i<TICK_FULL.length;i++) if(TICK_FULL[i].v === v) return TICK_FULL[i].label; return v; }
+function tickBase(t){
+  return parseDate(t.removedAt) || parseDate(t.foundAt) || (t.createdAt ? new Date(t.createdAt) : new Date());
+}
+function tickControlDay(t){
+  var base = tickBase(t); base.setHours(0, 0, 0, 0);
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((today - base) / 86400000) + 1;
+}
+
+function renderTickScreen(){
+  var body = $("#tickBody"), foot = $("#tickFoot");
+  clear(body); clear(foot);
+  $("#tickSub").textContent = ticks.length ? ticks.length + " " + plural(ticks.length, "запись", "записи", "записей") : "пока пусто";
+
+  if(!ticks.length)
+    body.appendChild(el("div", "empty", "Отметьте укус клеща — дату, место, фото. Приложение 21 день напоминает о контроле и хранит анализы, но не ставит диагноз."));
+
+  ticks.forEach(function(t){ body.appendChild(tickCard(t)); });
+
+  var add = el("button", "btn primary", "＋ Отметить укус клеща");
+  add.type = "button";
+  add.addEventListener("click", function(){ openTickForm(null); });
+  foot.appendChild(add);
+}
+
+function tickCard(t){
+  var card = el("div", "card field");
+  card.appendChild(el("div", "", "Укус клеща · " + (t.foundAt ? whenDayText(t.foundAt) : "дата не указана")));
+
+  var day = tickControlDay(t);
+  if(day >= 1 && day <= TICK_CONTROL_DAYS){
+    card.appendChild(el("div", "daycount", "День " + day + " из " + TICK_CONTROL_DAYS));
+    var endD = tickBase(t); endD.setDate(endD.getDate() + TICK_CONTROL_DAYS - 1);
+    card.appendChild(el("div", "hint", "Активный контроль до " + fmtDate.format(endD) + ". Две проверки в день."));
+  }else if(day > TICK_CONTROL_DAYS){
+    if(day <= 90){
+      var longEnd = tickBase(t); longEnd.setDate(longEnd.getDate() + 90);
+      card.appendChild(el("div", "hint", "Активный контроль завершён. Длительное наблюдение до " + fmtDate.format(longEnd) + " — по согласованию с врачом."));
+    }else{
+      card.appendChild(el("div", "hint", "Наблюдение завершено."));
+    }
+  }
+
+  var bits = [];
+  if(t.place) bits.push("место: " + t.place);
+  if(t.fullness) bits.push(tickFullLabel(t.fullness).toLowerCase());
+  if(t.method) bits.push("снят: " + t.method);
+  if(bits.length) card.appendChild(el("div", "hint", bits.join(" · ")));
+  if(t.analyses && t.analyses.length) card.appendChild(el("div", "hint", "Анализы: " + t.analyses.length));
+
+  var open = el("button", "btn soft", "Открыть");
+  open.type = "button";
+  open.addEventListener("click", function(){ openTickForm(t); });
+  card.appendChild(open);
+  return card;
+}
+
+function openTickForm(existing){
+  var body = $("#tickBody"), foot = $("#tickFoot");
+  clear(body); clear(foot);
+  $("#tickSub").textContent = existing ? "редактирование" : "новая запись";
+  var t = existing || { id: makeId(), analyses: [] };
+  var draftFull = t.fullness || "";
+  var photoTick = t.photoTick || null;
+  var photoBite = t.photoBite || null;
+
+  var fFound = fieldInput("Когда обнаружили", t.foundAt, {type:"date"});
+  var fRemoved = fieldInput("Когда удалили", t.removedAt, {type:"date"});
+  var fPlace = fieldInput("Место на теле", t.place, {placeholder:"за ухом, левый бок…"});
+  body.appendChild(fFound); body.appendChild(fRemoved); body.appendChild(fPlace);
+
+  var fullWrap = el("div", "field");
+  fullWrap.appendChild(el("label", "", "Наполненность"));
+  fullWrap.appendChild(segControl(TICK_FULL, draftFull, function(v){ draftFull = v; }));
+  body.appendChild(fullWrap);
+
+  var fMethod = fieldInput("Как удалили", t.method, {placeholder:"выкрутили, у врача…"});
+  var fNotes = fieldInput("Заметки", t.notes, {textarea:true});
+  body.appendChild(fMethod); body.appendChild(fNotes);
+
+  var photoWrap = el("div", "field");
+  photoWrap.appendChild(el("label", "", "Фото"));
+  var prow = el("div", "photorow");
+  function photoSlot(get, set, caption){
+    var box = el("div", "");
+    box.style.flex = "1 1 120px";
+    var btn = el("button", "photobtn");
+    btn.type = "button";
+    var inp = el("input"); inp.type = "file"; inp.accept = "image/*"; inp.hidden = true;
+    function paint(){
+      clear(btn);
+      if(get()){ var im = el("img"); im.src = get(); btn.appendChild(im); }
+      else btn.appendChild(document.createTextNode(caption));
+    }
+    inp.addEventListener("change", function(){
+      var f = inp.files && inp.files[0]; inp.value = "";
+      if(!f) return;
+      downscaleImage(f, 1000, function(url){ set(url); paint(); });
+    });
+    btn.addEventListener("click", function(){ inp.click(); });
+    box.appendChild(btn); box.appendChild(inp);
+    paint();
+    return box;
+  }
+  prow.appendChild(photoSlot(function(){ return photoTick; }, function(v){ photoTick = v; }, "фото клеща"));
+  prow.appendChild(photoSlot(function(){ return photoBite; }, function(v){ photoBite = v; }, "фото места укуса"));
+  photoWrap.appendChild(prow);
+  body.appendChild(photoWrap);
+
+  var anWrap = el("div", "card field");
+  anWrap.appendChild(el("label", "", "Анализы"));
+  anWrap.appendChild(el("div", "note", "Анализ клеща показывает возбудителя в самом клеще, но не доказывает, что собака заразилась. Интерпретирует только врач."));
+  var anList = el("div", "field");
+  anWrap.appendChild(anList);
+  function drawAnalyses(){
+    clear(anList);
+    (t.analyses || []).forEach(function(a, idx){
+      var row = el("div", "rowline");
+      row.appendChild(el("span", "hint grow", [a.date && whenDayText(a.date), a.type, a.lab, a.result].filter(Boolean).join(" · ") || "анализ"));
+      var ed = el("button", "btn quiet", "Изм.");
+      ed.type = "button";
+      ed.addEventListener("click", function(){ commit(); openAnalysisForm(t, a, function(){ openTickForm(t); }); });
+      var rm = el("button", "btn quiet", "Убрать");
+      rm.type = "button";
+      rm.addEventListener("click", function(){ t.analyses.splice(idx, 1); save(KEY_TICKS, ticks); drawAnalyses(); });
+      row.appendChild(ed); row.appendChild(rm);
+      anList.appendChild(row);
+    });
+  }
+  drawAnalyses();
+  var addAn = el("button", "btn soft", "＋ Добавить анализ");
+  addAn.type = "button";
+  addAn.addEventListener("click", function(){
+    commit();
+    if(ticks.indexOf(t) < 0){ t.createdAt = t.createdAt || Date.now(); ticks.unshift(t); }
+    t.analyses = t.analyses || [];
+    var a = { id: makeId(), date: "", type: "", lab: "", result: "", comment: "" };
+    t.analyses.push(a);
+    openAnalysisForm(t, a, function(){ openTickForm(t); });
+  });
+  anWrap.appendChild(addAn);
+  body.appendChild(anWrap);
+
+  function commit(){
+    t.foundAt = fFound._input.value;
+    t.removedAt = fRemoved._input.value;
+    t.place = fPlace._input.value.trim();
+    t.fullness = draftFull;
+    t.method = fMethod._input.value.trim();
+    t.notes = fNotes._input.value.trim();
+    t.photoTick = photoTick;
+    t.photoBite = photoBite;
+  }
+
+  var saveBtn = el("button", "btn primary", "Сохранить");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    commit();
+    if(ticks.indexOf(t) < 0){ t.createdAt = t.createdAt || Date.now(); ticks.unshift(t); }
+    if(!save(KEY_TICKS, ticks)) alert("Не удалось сохранить — возможно, фото слишком большие.");
+    renderTickScreen();
+  });
+  foot.appendChild(saveBtn);
+
+  if(ticks.indexOf(t) >= 0){
+    var del = el("button", "btn quiet", "Удалить запись");
+    del.type = "button";
+    del.addEventListener("click", function(){
+      if(!confirm("Удалить эту запись об укусе клеща?")) return;
+      ticks = ticks.filter(function(x){ return x.id !== t.id; });
+      save(KEY_TICKS, ticks);
+      renderTickScreen();
+    });
+    foot.appendChild(del);
+  }
+  var cancel = el("button", "btn quiet", "Отмена");
+  cancel.type = "button";
+  cancel.addEventListener("click", renderTickScreen);
+  foot.appendChild(cancel);
+}
+
+function openAnalysisForm(tick, a, back){
+  var body = $("#tickBody"), foot = $("#tickFoot");
+  clear(body); clear(foot);
+  $("#tickSub").textContent = "анализ";
+  var fDate = fieldInput("Дата", a.date, {type:"date"});
+  var fType = fieldInput("Тип анализа", a.type, {placeholder:"ПЦР на возбудителей"});
+  var fLab = fieldInput("Лаборатория", a.lab, {});
+  var fResult = fieldInput("Результат", a.result, {textarea:true});
+  var fComment = fieldInput("Комментарий врача", a.comment, {textarea:true});
+  [fDate, fType, fLab, fResult, fComment].forEach(function(f){ body.appendChild(f); });
+
+  var saveBtn = el("button", "btn primary", "Сохранить анализ");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    a.date = fDate._input.value;
+    a.type = fType._input.value.trim();
+    a.lab = fLab._input.value.trim();
+    a.result = fResult._input.value.trim();
+    a.comment = fComment._input.value.trim();
+    save(KEY_TICKS, ticks);
+    back();
+  });
+  foot.appendChild(saveBtn);
+  var cancel = el("button", "btn quiet", "Назад без сохранения");
+  cancel.type = "button";
+  cancel.addEventListener("click", back);
+  foot.appendChild(cancel);
+}
+
+/* ═══ Календарь (§8) ═══ */
+
+var EVENT_TYPES = [ {v:"visit", label:"Визит"}, {v:"lab", label:"Анализ"}, {v:"note", label:"Заметка"} ];
+function eventTypeLabel(v){ for(var i=0;i<EVENT_TYPES.length;i++) if(EVENT_TYPES[i].v === v) return EVENT_TYPES[i].label; return v; }
+
+function calendarItems(){
+  var items = [];
+  var nd = nextDue();
+  if(nd) items.push({ date: isoDay(nd), sort: nd.getTime(), kind: "check", title: "Проверка Миши в " + fmtTime.format(nd), done: false });
+
+  meds.forEach(function(m){
+    if(m.archived || !m.nextDate) return;
+    var d = parseDate(m.nextDate);
+    items.push({
+      date: m.nextDate, sort: d ? d.getTime() : 0, ref: m,
+      kind: m.kind === "treatment" ? "treat" : "med",
+      title: (m.kind === "treatment" ? "Обработка: " : "Курс: ") + (m.name || "препарат")
+    });
+  });
+
+  ticks.forEach(function(t){
+    var day = tickControlDay(t);
+    if(day >= 1 && day <= TICK_CONTROL_DAYS){
+      var endD = tickBase(t); endD.setDate(endD.getDate() + TICK_CONTROL_DAYS - 1);
+      items.push({ date: isoDay(endD), sort: endD.getTime(), kind: "tick", ref: t,
+        title: "Контроль после клеща — день " + day + " из " + TICK_CONTROL_DAYS });
+    }
+  });
+
+  events.forEach(function(ev){
+    var d = parseDate(ev.date);
+    items.push({ date: ev.date, sort: d ? d.getTime() : 0, ref: ev, kind: ev.type, done: !!ev.done,
+      title: eventTypeLabel(ev.type) + (ev.title ? ": " + ev.title : "") });
+  });
+
+  items.sort(function(a, b){ return (a.sort || 0) - (b.sort || 0); });
+  return items;
+}
+
+function renderCalendar(){
+  var body = $("#calBody"), foot = $("#calFoot");
+  clear(body); clear(foot);
+  var items = calendarItems().filter(function(i){
+    if(i.done) return false;
+    var n = dayDiff(i.date);
+    return n === null || n >= -14;
+  });
+  $("#calSub").textContent = items.length ? items.length + " предстоящих" : "ничего не запланировано";
+
+  if(!items.length)
+    body.appendChild(el("div", "empty", "Здесь собираются плановые проверки, обработки, курсы лекарств, контроль после клеща и визиты к врачу."));
+
+  items.forEach(function(it){
+    var card = el("div", "card field");
+    var row = el("div", "rowline");
+    row.appendChild(el("div", "grow", it.title));
+    row.appendChild(duePill(it.date, it.done));
+    card.appendChild(row);
+    card.appendChild(el("div", "hint", whenDayText(it.date)));
+
+    if(it.kind === "treat" || it.kind === "med"){
+      var bm = el("button", "btn quiet", "Открыть лекарство");
+      bm.type = "button";
+      bm.addEventListener("click", function(){ show("s-meds"); openMedForm(it.ref); });
+      card.appendChild(bm);
+    }else if(it.kind === "tick"){
+      var btk = el("button", "btn quiet", "Открыть запись о клеще");
+      btk.type = "button";
+      btk.addEventListener("click", function(){ show("s-tick"); openTickForm(it.ref); });
+      card.appendChild(btk);
+    }else if(it.ref && (it.kind === "visit" || it.kind === "lab" || it.kind === "note")){
+      if(it.ref.notes) card.appendChild(el("div", "hint", it.ref.notes));
+      var act = el("div", "miniact");
+      var dn = el("button", "btn soft", "Выполнено");
+      dn.type = "button";
+      dn.addEventListener("click", function(){ it.ref.done = true; save(KEY_EVENTS, events); renderCalendar(); });
+      var ed = el("button", "btn soft", "Изменить");
+      ed.type = "button";
+      ed.addEventListener("click", function(){ openEventForm(it.ref); });
+      var rm = el("button", "btn quiet", "Удалить");
+      rm.type = "button";
+      rm.addEventListener("click", function(){
+        events = events.filter(function(x){ return x.id !== it.ref.id; });
+        save(KEY_EVENTS, events);
+        renderCalendar();
+      });
+      act.appendChild(dn); act.appendChild(ed); act.appendChild(rm);
+      card.appendChild(act);
+    }
+    body.appendChild(card);
+  });
+
+  var addEv = el("button", "btn primary", "＋ Визит или анализ");
+  addEv.type = "button";
+  addEv.addEventListener("click", function(){ openEventForm(null); });
+  foot.appendChild(addEv);
+
+  var toMeds = el("button", "btn soft", "Лекарства и обработки");
+  toMeds.type = "button";
+  toMeds.addEventListener("click", function(){ renderMeds(); show("s-meds"); });
+  foot.appendChild(toMeds);
+
+  var toTick = el("button", "btn soft", "Укус клеща");
+  toTick.type = "button";
+  toTick.addEventListener("click", function(){ renderTickScreen(); show("s-tick"); });
+  foot.appendChild(toTick);
+}
+
+function openEventForm(existing){
+  var body = $("#calBody"), foot = $("#calFoot");
+  clear(body); clear(foot);
+  $("#calSub").textContent = existing ? "редактирование" : "новое событие";
+  var ev = existing || { id: makeId(), type: "visit", date: "", title: "", notes: "", done: false };
+  var draftType = ev.type || "visit";
+
+  body.appendChild(segControl(EVENT_TYPES, draftType, function(v){ draftType = v; }));
+  var fDate = fieldInput("Дата", ev.date, {type:"date"});
+  var fTitle = fieldInput("Коротко", ev.title, {placeholder:"плановый осмотр"});
+  var fNotes = fieldInput("Заметки / вопросы врачу", ev.notes, {textarea:true});
+  body.appendChild(fDate); body.appendChild(fTitle); body.appendChild(fNotes);
+
+  var saveBtn = el("button", "btn primary", "Сохранить");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    ev.type = draftType;
+    ev.date = fDate._input.value;
+    ev.title = fTitle._input.value.trim();
+    ev.notes = fNotes._input.value.trim();
+    if(events.indexOf(ev) < 0){ ev.createdAt = Date.now(); events.push(ev); }
+    save(KEY_EVENTS, events);
+    renderCalendar();
+  });
+  foot.appendChild(saveBtn);
+  var cancel = el("button", "btn quiet", "Отмена");
+  cancel.type = "button";
+  cancel.addEventListener("click", renderCalendar);
+  foot.appendChild(cancel);
+}
+
+$("#toCalendar").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
+$("#calBack").addEventListener("click", function(){ renderHome(); show("s-home"); });
+$("#medsBack").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
+$("#tickBack").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
+
+/* ══════════════════ Фото к записям · после прогулки · отчёт ══════════════════ */
+
+/* Блок «Фото» для записи дневника: миниатюры + добавление. Правки сразу сохраняются. */
+function mediaBlock(entry){
+  var wrap = el("div", "card field");
+  wrap.appendChild(el("label", "", "Фото"));
+  var thumbs = el("div", "thumbs");
+  var inp = el("input"); inp.type = "file"; inp.accept = "image/*"; inp.hidden = true;
+  inp.addEventListener("click", function(ev){ ev.stopPropagation(); });
+  inp.addEventListener("change", function(){
+    var f = inp.files && inp.files[0]; inp.value = "";
+    if(!f) return;
+    downscaleImage(f, 1100, function(url){
+      entry.media = entry.media || [];
+      entry.media.push({ id: makeId(), data: url });
+      if(!save(KEY_ENTRIES, entries)){ entry.media.pop(); alert("Не удалось сохранить фото — возможно, не хватает места."); return; }
+      draw();
+    });
+  });
+  function draw(){
+    clear(thumbs);
+    (entry.media || []).forEach(function(mm, i){
+      var t = el("div", "t");
+      var im = el("img"); im.src = mm.data; im.alt = "Фото";
+      var rm = el("button", "", "×"); rm.type = "button";
+      rm.addEventListener("click", function(ev){
+        ev.stopPropagation();
+        entry.media.splice(i, 1);
+        save(KEY_ENTRIES, entries);
+        draw();
+      });
+      t.appendChild(im); t.appendChild(rm);
+      thumbs.appendChild(t);
+    });
+  }
+  var add = el("button", "btn soft", "＋ Фото к записи");
+  add.type = "button";
+  add.addEventListener("click", function(ev){ ev.stopPropagation(); inp.click(); });
+  wrap.appendChild(thumbs);
+  wrap.appendChild(add);
+  wrap.appendChild(inp);
+  draw();
+  return wrap;
+}
+
+/* ═══ После прогулки (§2) ═══ */
+
+var WALK_ITEMS = [
+  {v:"overheat", label:"Перегрелся: тяжело дышал, искал тень или воду"},
+  {v:"urine",    label:"Необычная моча на прогулке"},
+  {v:"tick",     label:"Нашли клеща"},
+  {v:"injury",   label:"Травма: порез, ушиб, захромал"},
+  {v:"behavior", label:"Необычное поведение"}
+];
+var walkPicked = {};
+var walkNote = "";
+var walkMedia = [];
+
+function startWalk(){
+  walkPicked = {}; walkNote = ""; walkMedia = [];
+  renderWalk();
+  show("s-walk");
+}
+
+function renderWalk(){
+  var body = $("#walkBody"), foot = $("#walkFoot");
+  clear(body); clear(foot);
+  body.appendChild(el("div", "hint", "Отметьте, что заметили. Это просто запись в дневник — статус не выставляется."));
+
+  WALK_ITEMS.forEach(function(it){
+    var b = el("button", "checkline" + (walkPicked[it.v] ? " sel" : ""));
+    b.type = "button";
+    var box = el("div", "box"); box.innerHTML = tick();
+    b.appendChild(box);
+    b.appendChild(el("span", "", it.label));
+    b.setAttribute("aria-pressed", walkPicked[it.v] ? "true" : "false");
+    b.addEventListener("click", function(){
+      walkPicked[it.v] = !walkPicked[it.v];
+      b.classList.toggle("sel", !!walkPicked[it.v]);
+      b.setAttribute("aria-pressed", walkPicked[it.v] ? "true" : "false");
+    });
+    body.appendChild(b);
+  });
+
+  var f = fieldInput("Заметка", walkNote, {textarea:true, placeholder:"Свободно: что и когда"});
+  f._input.addEventListener("input", function(){ walkNote = f._input.value; });
+  body.appendChild(f);
+
+  var pw = el("div", "field");
+  pw.appendChild(el("label", "", "Фото"));
+  var thumbs = el("div", "thumbs");
+  var inp = el("input"); inp.type = "file"; inp.accept = "image/*"; inp.hidden = true;
+  inp.addEventListener("change", function(){
+    var fl = inp.files && inp.files[0]; inp.value = "";
+    if(!fl) return;
+    downscaleImage(fl, 1100, function(url){ walkMedia.push({ id: makeId(), data: url }); drawT(); });
+  });
+  function drawT(){
+    clear(thumbs);
+    walkMedia.forEach(function(mm, i){
+      var t = el("div", "t");
+      var im = el("img"); im.src = mm.data;
+      var rm = el("button", "", "×"); rm.type = "button";
+      rm.addEventListener("click", function(){ walkMedia.splice(i, 1); drawT(); });
+      t.appendChild(im); t.appendChild(rm);
+      thumbs.appendChild(t);
+    });
+  }
+  var addP = el("button", "btn soft", "＋ Фото");
+  addP.type = "button";
+  addP.addEventListener("click", function(){ inp.click(); });
+  pw.appendChild(thumbs); pw.appendChild(addP); pw.appendChild(inp);
+  drawT();
+  body.appendChild(pw);
+
+  var saveBtn = el("button", "btn primary", "Сохранить в дневник");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", saveWalk);
+  foot.appendChild(saveBtn);
+  var cancel = el("button", "btn quiet", "Отмена");
+  cancel.type = "button";
+  cancel.addEventListener("click", function(){ renderHome(); show("s-home"); });
+  foot.appendChild(cancel);
+}
+
+function saveWalk(){
+  var obs = WALK_ITEMS.filter(function(it){ return walkPicked[it.v]; }).map(function(it){ return it.label; });
+  if(!obs.length && !walkNote.trim() && !walkMedia.length){
+    renderHome(); show("s-home"); return;
+  }
+  var entry = {
+    id: makeId(), ts: Date.now(), type: "walk", status: "log",
+    rulesVersion: RULES.version,
+    red: [], yellow: [], ok: obs,
+    note: walkNote.trim(),
+    media: walkMedia.slice(),
+    answers: null
+  };
+  entries.unshift(entry);
+  if(entries.length > 400) entries.length = 400;
+  if(!save(KEY_ENTRIES, entries)){ entries.shift(); alert("Не удалось сохранить."); return; }
+  var tookTick = !!walkPicked.tick;
+  renderHome();
+  if(tookTick){ openTickForm(null); show("s-tick"); }
+  else { renderDiary(); show("s-diary"); }
+}
+
+$("#startWalk").addEventListener("click", function(){ startWalk(); });
+$("#walkBack").addEventListener("click", function(){ renderHome(); show("s-home"); });
+
+/* ═══ Отчёт ветеринару (§10) ═══ */
+
+var KEY_REPORTNOTES = "misha.reportNotes";
+var REPORT_PERIODS = [ {v:"7", label:"7 дней"}, {v:"14", label:"14 дней"}, {v:"30", label:"30 дней"}, {v:"0", label:"всё время"} ];
+var reportDraft = { days: 14, cats: { checks:true, walks:true, meds:true, ticks:true, events:true, photos:true }, questions: "" };
+
+function startReport(){
+  reportDraft.questions = load(KEY_REPORTNOTES, "") || "";
+  renderReportSetup();
+  show("s-report");
+}
+
+function renderReportSetup(){
+  var body = $("#reportBody"), foot = $("#reportFoot");
+  clear(body); clear(foot);
+  $("#reportSub").textContent = "что включить";
+
+  var pf = el("div", "field");
+  pf.appendChild(el("label", "", "Период"));
+  pf.appendChild(segControl(REPORT_PERIODS, String(reportDraft.days), function(v){ reportDraft.days = +v; }));
+  body.appendChild(pf);
+
+  var cats = [
+    {k:"checks", label:"Проверки самочувствия"},
+    {k:"walks",  label:"Отметки после прогулок"},
+    {k:"meds",   label:"Лекарства и обработки"},
+    {k:"ticks",  label:"Укусы клеща и анализы"},
+    {k:"events", label:"Визиты и анализы"},
+    {k:"photos", label:"Фотографии"}
+  ];
+  var cf = el("div", "field");
+  cf.appendChild(el("label", "", "Разделы"));
+  cats.forEach(function(c){
+    var b = el("button", "checkline calm" + (reportDraft.cats[c.k] ? " sel" : ""));
+    b.type = "button";
+    var box = el("div", "box"); box.innerHTML = tick();
+    b.appendChild(box);
+    b.appendChild(el("span", "", c.label));
+    b.addEventListener("click", function(){
+      reportDraft.cats[c.k] = !reportDraft.cats[c.k];
+      b.classList.toggle("sel", !!reportDraft.cats[c.k]);
+    });
+    cf.appendChild(b);
+  });
+  body.appendChild(cf);
+
+  var qf = fieldInput("Вопросы ветеринару", reportDraft.questions, {textarea:true, placeholder:"Что спросить на приёме"});
+  qf._input.addEventListener("input", function(){ reportDraft.questions = qf._input.value; });
+  body.appendChild(qf);
+
+  var gen = el("button", "btn primary", "Сформировать отчёт");
+  gen.type = "button";
+  gen.addEventListener("click", function(){
+    save(KEY_REPORTNOTES, reportDraft.questions);
+    renderReportView();
+  });
+  foot.appendChild(gen);
+  var cancel = el("button", "btn quiet", "Назад");
+  cancel.type = "button";
+  cancel.addEventListener("click", function(){ renderDiary(); show("s-diary"); });
+  foot.appendChild(cancel);
+}
+
+function reportScope(){
+  var since = reportDraft.days ? Date.now() - reportDraft.days * 86400000 : 0;
+  return {
+    since: since,
+    checks: entries.filter(function(e){ return e.ts >= since && e.type !== "walk"; }),
+    walks: entries.filter(function(e){ return e.ts >= since && e.type === "walk"; })
+  };
+}
+
+function kvRow(k, v){
+  var d = el("div", "kv");
+  d.appendChild(el("b", "", k));
+  d.appendChild(el("span", "", v));
+  return d;
+}
+
+function renderReportView(){
+  var body = $("#reportBody"), foot = $("#reportFoot");
+  clear(body); clear(foot);
+  var p = profile || normalizeProfile({});
+  var sc = reportScope();
+  $("#reportSub").textContent = "готов";
+
+  var head = el("div", "card rep");
+  head.appendChild(el("h2", "", p.name + " — отчёт о наблюдении"));
+  head.appendChild(el("div", "hint",
+    (reportDraft.days ? "период: последние " + reportDraft.days + " " + plural(reportDraft.days, "день", "дня", "дней") : "период: всё время наблюдения") +
+    " · сформирован " + fmtDate.format(new Date())));
+  var idBits = [];
+  if(p.breed) idBits.push(p.breed);
+  if(p.birth) idBits.push("р. " + p.birth);
+  if(p.weight) idBits.push(p.weight + " кг");
+  if(idBits.length) head.appendChild(el("div", "hint", idBits.join(" · ")));
+  if(p.diagnoses) head.appendChild(kvRow("Хроническое", p.diagnoses));
+  if(p.allergies) head.appendChild(kvRow("Аллергии", p.allergies));
+  if(p.bannedMeds) head.appendChild(kvRow("Нельзя давать", p.bannedMeds));
+  body.appendChild(head);
+
+  if(reportDraft.cats.checks){
+    var counts = { green:0, neutral:0, yellow:0, red:0 };
+    sc.checks.forEach(function(e){ if(counts[e.status] !== undefined) counts[e.status]++; });
+    var cc = el("div", "card rep");
+    cc.appendChild(el("h3", "", "Проверки самочувствия"));
+    cc.appendChild(el("div", "", "Всего: " + sc.checks.length + " · зелёных " + counts.green +
+      " · неполных " + counts.neutral + " · жёлтых " + counts.yellow + " · красных " + counts.red));
+    var flagged = sc.checks.filter(function(e){ return (e.red && e.red.length) || (e.yellow && e.yellow.length); });
+    if(flagged.length){
+      cc.appendChild(el("h3", "", "Отклонения от нормы"));
+      flagged.forEach(function(e){
+        cc.appendChild(el("div", "", whenText(e.ts) + " — " + STATUS_TEXT[e.status].title));
+        e.red.concat(e.yellow).forEach(function(r){ cc.appendChild(el("div", "hint", "• " + r)); });
+      });
+    }else{
+      cc.appendChild(el("div", "hint", "Все проверки за период — в пределах его личной нормы, отдельные дни не расписываем."));
+    }
+    var temps = sc.checks.filter(function(e){ return e.answers && typeof e.answers.temp === "number"; })
+      .map(function(e){ return fmtDate.format(new Date(e.ts)) + " — " + e.answers.temp.toFixed(1) + " °C"; });
+    if(temps.length) cc.appendChild(kvRow("Температура", temps.join("; ")));
+    body.appendChild(cc);
+  }
+
+  if(reportDraft.cats.walks && sc.walks.length){
+    var wc = el("div", "card rep");
+    wc.appendChild(el("h3", "", "После прогулок"));
+    sc.walks.forEach(function(e){
+      wc.appendChild(el("div", "hint", whenText(e.ts) + " — " + ((e.ok || []).join(", ") || "заметка") + (e.note ? (". " + e.note) : "")));
+    });
+    body.appendChild(wc);
+  }
+
+  if(reportDraft.cats.meds && meds.length){
+    var mc = el("div", "card rep");
+    mc.appendChild(el("h3", "", "Лекарства и обработки"));
+    meds.forEach(function(m){
+      mc.appendChild(el("div", "", (m.name || "—") + (m.substance ? " (" + m.substance + ")" : "") + " " +
+        [m.dose, m.unit].filter(Boolean).join(" ") + (m.timing ? ", " + m.timing : "") + (m.archived ? " — завершено" : "")));
+      var recent = (m.log || []).filter(function(x){ return x.ts >= sc.since; });
+      if(recent.length){
+        var g = recent.filter(function(x){ return x.status === "given"; }).length;
+        var s = recent.filter(function(x){ return x.status === "skipped"; }).length;
+        mc.appendChild(el("div", "hint", "за период: дано " + g + ", пропущено " + s));
+      }
+      if(m.kind === "treatment" && m.nextDate) mc.appendChild(el("div", "hint", "следующая обработка: " + whenDayText(m.nextDate)));
+    });
+    body.appendChild(mc);
+  }
+
+  if(reportDraft.cats.ticks && ticks.length){
+    var tc = el("div", "card rep");
+    tc.appendChild(el("h3", "", "Укусы клеща"));
+    ticks.forEach(function(t){
+      tc.appendChild(el("div", "", "Обнаружен " + (t.foundAt ? whenDayText(t.foundAt) : "—") + (t.place ? ", " + t.place : "")));
+      var day = tickControlDay(t);
+      tc.appendChild(el("div", "hint", (day >= 1 && day <= TICK_CONTROL_DAYS) ? ("контроль: день " + day + " из " + TICK_CONTROL_DAYS) : "контроль завершён"));
+      (t.analyses || []).forEach(function(a){
+        tc.appendChild(el("div", "hint", "анализ " + (a.date ? whenDayText(a.date) + " " : "") + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? (" — " + a.comment) : "")));
+      });
+    });
+    body.appendChild(tc);
+  }
+
+  if(reportDraft.cats.events && events.length){
+    var evs = events.slice().sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
+    var ec = el("div", "card rep");
+    ec.appendChild(el("h3", "", "Визиты и анализы"));
+    evs.forEach(function(ev){
+      ec.appendChild(el("div", "", eventTypeLabel(ev.type) + ": " + (ev.title || "—") + " — " + whenDayText(ev.date) + (ev.done ? " (выполнено)" : "")));
+      if(ev.notes) ec.appendChild(el("div", "hint", ev.notes));
+    });
+    body.appendChild(ec);
+  }
+
+  if(reportDraft.cats.photos){
+    var photos = [];
+    sc.checks.concat(sc.walks).forEach(function(e){ (e.media || []).forEach(function(mm){ photos.push(mm.data); }); });
+    ticks.forEach(function(t){ [t.photoTick, t.photoBite].forEach(function(x){ if(x) photos.push(x); }); });
+    if(photos.length){
+      var pc = el("div", "card rep");
+      pc.appendChild(el("h3", "", "Фотографии"));
+      var grid = el("div", "thumbs");
+      photos.slice(0, 24).forEach(function(src){
+        var t = el("div", "t");
+        var im = el("img"); im.src = src;
+        t.appendChild(im);
+        grid.appendChild(t);
+      });
+      pc.appendChild(grid);
+      body.appendChild(pc);
+    }
+  }
+
+  if(reportDraft.questions.trim()){
+    var qc = el("div", "card rep");
+    qc.appendChild(el("h3", "", "Вопросы хозяйки к ветеринару"));
+    qc.appendChild(el("div", "", reportDraft.questions.trim()));
+    body.appendChild(qc);
+  }
+
+  body.appendChild(el("div", "note", "Отчёт составлен приложением-дневником. Это не диагноз и не заменяет очный осмотр."));
+
+  var printBtn = el("button", "btn primary", "Печать / сохранить PDF");
+  printBtn.type = "button";
+  printBtn.addEventListener("click", function(){ window.print(); });
+  foot.appendChild(printBtn);
+
+  var copyBtn = el("button", "btn soft", "Скопировать текстом");
+  copyBtn.type = "button";
+  copyBtn.addEventListener("click", function(){ copyText(buildReportText(sc, p), copyBtn); });
+  foot.appendChild(copyBtn);
+
+  var back = el("button", "btn quiet", "Изменить состав");
+  back.type = "button";
+  back.addEventListener("click", renderReportSetup);
+  foot.appendChild(back);
+}
+
+function buildReportText(sc, p){
+  var L = [];
+  L.push(p.name + " — отчёт о наблюдении");
+  L.push(reportDraft.days ? ("Период: последние " + reportDraft.days + " дн.") : "Период: всё время");
+  L.push("Сформирован: " + fmtDate.format(new Date()));
+  if(p.diagnoses) L.push("Хроническое: " + p.diagnoses);
+  if(p.allergies) L.push("Аллергии: " + p.allergies);
+  if(p.bannedMeds) L.push("Нельзя давать: " + p.bannedMeds);
+  L.push("");
+  if(reportDraft.cats.checks){
+    var counts = { green:0, neutral:0, yellow:0, red:0 };
+    sc.checks.forEach(function(e){ if(counts[e.status] !== undefined) counts[e.status]++; });
+    L.push("ПРОВЕРКИ: всего " + sc.checks.length + " (зелёных " + counts.green + ", неполных " + counts.neutral + ", жёлтых " + counts.yellow + ", красных " + counts.red + ")");
+    sc.checks.filter(function(e){ return (e.red && e.red.length) || (e.yellow && e.yellow.length); }).forEach(function(e){
+      L.push("  " + whenText(e.ts) + " — " + STATUS_TEXT[e.status].title);
+      e.red.concat(e.yellow).forEach(function(r){ L.push("    - " + r); });
+    });
+    L.push("");
+  }
+  if(reportDraft.cats.walks && sc.walks.length){
+    L.push("ПОСЛЕ ПРОГУЛОК:");
+    sc.walks.forEach(function(e){ L.push("  " + whenText(e.ts) + " — " + ((e.ok || []).join(", ") || "заметка") + (e.note ? (". " + e.note) : "")); });
+    L.push("");
+  }
+  if(reportDraft.cats.meds && meds.length){
+    L.push("ЛЕКАРСТВА И ОБРАБОТКИ:");
+    meds.forEach(function(m){ L.push("  " + (m.name || "—") + " " + [m.dose, m.unit].filter(Boolean).join(" ") + (m.timing ? ", " + m.timing : "") + (m.archived ? " (завершено)" : "")); });
+    L.push("");
+  }
+  if(reportDraft.cats.ticks && ticks.length){
+    L.push("УКУСЫ КЛЕЩА:");
+    ticks.forEach(function(t){
+      L.push("  обнаружен " + (t.foundAt ? whenDayText(t.foundAt) : "—") + (t.place ? ", " + t.place : ""));
+      (t.analyses || []).forEach(function(a){ L.push("    анализ: " + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? " — " + a.comment : "")); });
+    });
+    L.push("");
+  }
+  if(reportDraft.cats.events && events.length){
+    L.push("ВИЗИТЫ И АНАЛИЗЫ:");
+    events.forEach(function(ev){ L.push("  " + eventTypeLabel(ev.type) + ": " + (ev.title || "—") + " — " + whenDayText(ev.date) + (ev.done ? " (выполнено)" : "")); });
+    L.push("");
+  }
+  if(reportDraft.questions.trim()){
+    L.push("ВОПРОСЫ К ВЕТЕРИНАРУ:");
+    L.push(reportDraft.questions.trim());
+    L.push("");
+  }
+  L.push("Составлено приложением-дневником, не является диагнозом.");
+  return L.join("\n");
+}
+
+function copyText(txt, btn){
+  var label = btn.textContent;
+  function done(){ btn.textContent = "Скопировано"; setTimeout(function(){ btn.textContent = label; }, 1500); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done, function(){ fallbackCopy(txt, done); });
+  }else fallbackCopy(txt, done);
+}
+function fallbackCopy(txt, done){
+  var ta = document.createElement("textarea");
+  ta.value = txt;
+  ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand("copy"); done(); }catch(e){ alert("Скопируйте вручную:\n\n" + txt); }
+  document.body.removeChild(ta);
+}
+
+$("#reportBack").addEventListener("click", function(){ renderDiary(); show("s-diary"); });
+
+/* ══════════════════ Старт ══════════════════ */
+
+if(profile && profile.name){
+  renderHome();
+  show("s-home");
+}else{
+  renderSetup(null);
+  show("s-setup");
+}
+
+/* Локальные напоминания о плановых проверках — только пока страница открыта. */
+scheduleTick();
+setInterval(function(){
+  scheduleTick();
+  if(document.getElementById("s-home").classList.contains("active")){ renderNext(); updateStartButton(); }
+}, 60000);
+
+/* PWA: сервис-воркер работает только когда страница отдаётся по http(s) */
+if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+
+})();
+</script>
+</body>
+</html>
