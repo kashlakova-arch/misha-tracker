@@ -23,20 +23,34 @@ Safari не даст установить PWA и не покажет уведо�
 
 ---
 
-## Способ 2. GitHub Pages (если пользуешься Git)
+## Способ 2. GitHub Pages
 
-1. Создай публичный репозиторий на github.com, залей туда содержимое папки:
+Локальный git-репозиторий уже создан: ветка `main`, первый коммит сделан,
+приватные фото из `assets/source/` и `make-icons.html` в него НЕ попали (см. `.gitignore`).
+Осталось создать репозиторий на GitHub и запушить.
+
+1. На **github.com** → **New repository**. Имя: `misha-tracker`. Тип: **Public**
+   (для бесплатного Pages). **Не** отмечай «Add a README / .gitignore / license» — репозиторий должен быть пустым.
+2. В папке проекта выполни (подставь свой логин вместо `USERNAME`):
    ```
-   git init
-   git add .
-   git commit -m "Misha Health Tracker"
-   git branch -M main
    git remote add origin https://github.com/USERNAME/misha-tracker.git
    git push -u origin main
    ```
-2. В репозитории: **Settings → Pages → Build and deployment → Source: Deploy from a branch**,
-   ветка `main`, папка `/ (root)` → **Save**.
-3. Через минуту-две адрес будет `https://USERNAME.github.io/misha-tracker/`.
+   GitHub спросит логин и пароль — вместо пароля нужен **Personal Access Token**
+   (github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) →
+   Generate new token, галочка `repo`). Токен и вставляешь как пароль.
+3. В репозитории на GitHub: **Settings → Pages → Build and deployment →
+   Source: Deploy from a branch**, ветка `main`, папка `/ (root)` → **Save**.
+4. Через 1–2 минуты приложение будет по адресу `https://USERNAME.github.io/misha-tracker/`.
+   Его и открывай на телефоне.
+
+**Обновить приложение позже:**
+```
+git add -A
+git commit -m "обновление"
+git push
+```
+Pages переразвернётся сам за минуту.
 
 (Все пути в приложении относительные, поэтому подпапка `/misha-tracker/` его не ломает.)
 
