@@ -3433,6 +3433,26 @@ function openTickForm(existing){
   var anWrap = el("div", "card field");
   anWrap.appendChild(el("label", "", "Анализы"));
   anWrap.appendChild(el("div", "note", "Анализ клеща показывает возбудителя в самом клеще, но не доказывает, что собака заразилась. Интерпретирует только врач."));
+
+  if(t.followUpEventId){
+    var fuEv = null;
+    for(var fx = 0; fx < events.length; fx++) if(events[fx].id === t.followUpEventId){ fuEv = events[fx]; break; }
+    if(fuEv){
+      var fuRow = el("div", "rowline");
+      fuRow.appendChild(el("span", "hint grow", "Рекомендованный анализ: " + whenDayText(fuEv.date)));
+      var fuBtn = el("button", "btn quiet", fuEv.done ? "Изменить результат" : "Внести результат");
+      fuBtn.type = "button";
+      fuBtn.addEventListener("click", function(){
+        commit();
+        if(ticks.indexOf(t) < 0){ t.createdAt = t.createdAt || Date.now(); ticks.unshift(t); }
+        save(KEY_TICKS, ticks);
+        openLabForm(fuEv, { host: "tick", back: function(){ openTickForm(t); } });
+      });
+      fuRow.appendChild(fuBtn);
+      anWrap.appendChild(fuRow);
+    }
+  }
+
   var anList = el("div", "field");
   anWrap.appendChild(anList);
   function drawAnalyses(){
@@ -3444,7 +3464,16 @@ function openTickForm(existing){
       row.appendChild(el("span", "hint grow", rowParts.join(" · ") || "анализ"));
       var ed = el("button", "btn quiet", "Изм.");
       ed.type = "button";
-      ed.addEventListener("click", function(){ commit(); openAnalysisForm(t, a, function(){ openTickForm(t); }); });
+      ed.addEventListener("click", function(){
+        commit();
+        if(ticks.indexOf(t) < 0){ t.createdAt = t.createdAt || Date.now(); ticks.unshift(t); }
+        if(a._src === "event"){
+          save(KEY_TICKS, ticks);
+          openLabForm(a._ref, { host: "tick", back: function(){ openTickForm(t); } });
+        }else{
+          openAnalysisForm(t, a, function(){ openTickForm(t); });
+        }
+      });
       var rm = el("button", "btn quiet", "Убрать");
       rm.type = "button";
       rm.addEventListener("click", function(){
@@ -3469,10 +3498,8 @@ function openTickForm(existing){
     commit();
     if(ticks.indexOf(t) < 0){ t.createdAt = t.createdAt || Date.now(); ticks.unshift(t); }
     syncTickFollowUp(t);
-    t.analyses = t.analyses || [];
-    var a = { id: makeId(), date: "", type: "", lab: "", result: "", comment: "" };
-    t.analyses.push(a);
-    openAnalysisForm(t, a, function(){ openTickForm(t); });
+    save(KEY_TICKS, ticks);
+    openLabForm(null, { host: "tick", linkedTickId: t.id, back: function(){ openTickForm(t); } });
   });
   anWrap.appendChild(addAn);
   body.appendChild(anWrap);
@@ -3520,8 +3547,123 @@ function openTickForm(existing){
   foot.appendChild(cancel);
 }
 
-/* a — либо сырой inline-объект анализа (из «＋ Добавить анализ»), либо строка из
-   tickLabs() с _src/_ref. Пишем обратно в родную форму источника. */
+/* Блок «Файлы результата» (фото/PDF) для формы анализа. Файлы живут в ref.files и
+   сохраняются сразу через persist() — большой файл не теряется при уходе с формы. */
+function labFilesBlock(ref, persist){
+  ref.files = Array.isArray(ref.files) ? ref.files : [];
+  var fileWrap = el("div", "card field");
+  fileWrap.appendChild(el("label", "", "Файлы результата"));
+  fileWrap.appendChild(el("div", "note", "Фото бланка или PDF. Фото сжимается, PDF сохраняется как есть."));
+  var fileList = el("div", "field");
+  fileWrap.appendChild(fileList);
+  var fileInp = el("input"); fileInp.type = "file"; fileInp.accept = "image/*,application/pdf"; fileInp.hidden = true;
+  function isPdfFile(f){ return (f.type || "").indexOf("pdf") >= 0 || /\.pdf$/i.test(f.name || ""); }
+  function addFile(name, mime, url){
+    if(url && url.length > 12000000){ alert("Файл слишком большой (больше ~9 МБ). Сожмите PDF или сфотографируйте бланк."); return; }
+    var item = { id: makeId(), name: name || (mime.indexOf("pdf") >= 0 ? "документ.pdf" : "фото.jpg"), mime: mime, data: url };
+    ref.files.push(item);
+    if(!persist()){ ref.files.pop(); alert("Не удалось сохранить файл — возможно, не хватает места."); return; }
+    draw();
+  }
+  fileInp.addEventListener("change", function(){
+    var f = fileInp.files && fileInp.files[0]; fileInp.value = "";
+    if(!f) return;
+    if(isPdfFile(f)){
+      var r = new FileReader();
+      r.onload = function(){ addFile(f.name, f.type || "application/pdf", r.result); };
+      r.onerror = function(){ alert("Не удалось прочитать файл."); };
+      r.readAsDataURL(f);
+    }else{
+      downscaleImage(f, 1200, function(url){ addFile(f.name, "image/jpeg", url); });
+    }
+  });
+  function draw(){
+    clear(fileList);
+    if(!ref.files.length){ fileList.appendChild(el("div", "hint", "файлов пока нет")); return; }
+    ref.files.forEach(function(fl, idx){
+      var row = el("div", "rowline");
+      var link = el("a", "hint grow", (fl.mime && fl.mime.indexOf("pdf") >= 0 ? "PDF · " : "фото · ") + (fl.name || "файл"));
+      link.href = fl.data; link.target = "_blank"; link.rel = "noopener";
+      row.appendChild(link);
+      var rmf = el("button", "btn quiet", "Убрать");
+      rmf.type = "button";
+      rmf.addEventListener("click", function(){ ref.files.splice(idx, 1); persist(); draw(); });
+      row.appendChild(rmf);
+      fileList.appendChild(row);
+    });
+  }
+  draw();
+  var addFileBtn = el("button", "btn soft", "＋ Добавить файл");
+  addFileBtn.type = "button";
+  addFileBtn.addEventListener("click", function(){ fileInp.click(); });
+  fileWrap.appendChild(addFileBtn);
+  fileWrap.appendChild(fileInp);
+  return fileWrap;
+}
+
+/* B3: отдельная форма анализа. Всегда пишет в events как type:"lab" (единый стор D2).
+   opts.host — куда рендерим ("cal" | "tick"); opts.back — куда вернуться;
+   opts.linkedTickId / opts.linkedVisitId — связи. Дата свободная, включая прошлое.
+   Результат приложение не толкует (ТЗ п.6). */
+function openLabForm(existing, opts){
+  opts = opts || {};
+  var toTick = opts.host === "tick";
+  var body = $(toTick ? "#tickBody" : "#calBody");
+  var foot = $(toTick ? "#tickFoot" : "#calFoot");
+  var back = opts.back || function(){ renderCalendar(); };
+  clear(body); clear(foot);
+  $(toTick ? "#tickSub" : "#calSub").textContent = existing ? "анализ · правка" : "новый анализ";
+
+  var now = Date.now();
+  var ev = existing || {
+    id: makeId(), type: "lab", date: "", title: "",
+    labType: "", lab: "", result: "", vetComment: "",
+    files: [], notes: "", done: false,
+    linkedVisitId: opts.linkedVisitId || null,
+    linkedTickId: opts.linkedTickId || null,
+    createdAt: now, enteredAt: now
+  };
+
+  var fDate = fieldInput("Дата анализа", ev.date, {type:"date"});
+  var fType = fieldInput("Тип анализа", ev.labType || ev.title, {placeholder:"ПЦР на возбудителей"});
+  var fLab = fieldInput("Лаборатория", ev.lab, {});
+  var fResult = fieldInput("Результат", ev.result, {textarea:true});
+  var fComment = fieldInput("Комментарий врача", ev.vetComment, {textarea:true});
+  [fDate, fType, fLab, fResult, fComment].forEach(function(f){ body.appendChild(f); });
+  body.appendChild(el("div", "note", "Приложение не толкует результат анализа — это делает только врач."));
+
+  function persistLab(){
+    if(events.indexOf(ev) < 0) events.push(ev);
+    return save(KEY_EVENTS, events);
+  }
+  body.appendChild(labFilesBlock(ev, persistLab));
+
+  var saveBtn = el("button", "btn primary", "Сохранить анализ");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    ev.date = fDate._input.value;
+    ev.labType = fType._input.value.trim();
+    ev.title = ev.labType;
+    ev.lab = fLab._input.value.trim();
+    ev.result = fResult._input.value.trim();
+    ev.vetComment = fComment._input.value.trim();
+    if(!ev.enteredAt) ev.enteredAt = Date.now();
+    if(!ev.createdAt) ev.createdAt = ev.enteredAt;
+    if(ev.done !== true) ev.done = !!(ev.result || ev.vetComment || ev.lab || (ev.files && ev.files.length));
+    if(events.indexOf(ev) < 0) events.push(ev);
+    save(KEY_EVENTS, events);
+    back();
+  });
+  foot.appendChild(saveBtn);
+  var cancel = el("button", "btn quiet", "Назад без сохранения");
+  cancel.type = "button";
+  cancel.addEventListener("click", back);
+  foot.appendChild(cancel);
+}
+
+/* a — либо сырой inline-объект анализа (устаревший путь), либо строка из
+   tickLabs() с _src/_ref. Пишем обратно в родную форму источника.
+   Оставлен для правки устаревших inline-анализов; новые идут через openLabForm. */
 function openAnalysisForm(tick, a, back){
   var body = $("#tickBody"), foot = $("#tickFoot");
   clear(body); clear(foot);
@@ -3535,62 +3677,13 @@ function openAnalysisForm(tick, a, back){
   var fComment = fieldInput("Комментарий врача", a.comment, {textarea:true});
   [fDate, fType, fLab, fResult, fComment].forEach(function(f){ body.appendChild(f); });
 
-  /* мини-шаг: файлы результата (фото/PDF). Живут в ref.files и сохраняются сразу,
-     как медиа дневника, — большой файл не теряется при уходе с формы. */
-  ref.files = Array.isArray(ref.files) ? ref.files : [];
+  /* файлы результата (фото/PDF) — общий блок с openLabForm */
   function persistAnalysis(){
     if(isEvent) return save(KEY_EVENTS, events);
     tick._analysesMigrated = false;
     return save(KEY_TICKS, ticks);
   }
-  var fileWrap = el("div", "card field");
-  fileWrap.appendChild(el("label", "", "Файлы результата"));
-  fileWrap.appendChild(el("div", "note", "Фото бланка или PDF. Фото сжимается, PDF сохраняется как есть."));
-  var fileList = el("div", "field");
-  fileWrap.appendChild(fileList);
-  var fileInp = el("input"); fileInp.type = "file"; fileInp.accept = "image/*,application/pdf"; fileInp.hidden = true;
-  function isPdfFile(f){ return (f.type || "").indexOf("pdf") >= 0 || /\.pdf$/i.test(f.name || ""); }
-  function addAnalysisFile(name, mime, url){
-    if(url && url.length > 12000000){ alert("Файл слишком большой (больше ~9 МБ). Сожмите PDF или сфотографируйте бланк."); return; }
-    var item = { id: makeId(), name: name || (mime.indexOf("pdf") >= 0 ? "документ.pdf" : "фото.jpg"), mime: mime, data: url };
-    ref.files.push(item);
-    if(!persistAnalysis()){ ref.files.pop(); alert("Не удалось сохранить файл — возможно, не хватает места."); return; }
-    drawAnalysisFiles();
-  }
-  fileInp.addEventListener("change", function(){
-    var f = fileInp.files && fileInp.files[0]; fileInp.value = "";
-    if(!f) return;
-    if(isPdfFile(f)){
-      var r = new FileReader();
-      r.onload = function(){ addAnalysisFile(f.name, f.type || "application/pdf", r.result); };
-      r.onerror = function(){ alert("Не удалось прочитать файл."); };
-      r.readAsDataURL(f);
-    }else{
-      downscaleImage(f, 1200, function(url){ addAnalysisFile(f.name, "image/jpeg", url); });
-    }
-  });
-  function drawAnalysisFiles(){
-    clear(fileList);
-    if(!ref.files.length){ fileList.appendChild(el("div", "hint", "файлов пока нет")); return; }
-    ref.files.forEach(function(fl, idx){
-      var row = el("div", "rowline");
-      var link = el("a", "hint grow", (fl.mime && fl.mime.indexOf("pdf") >= 0 ? "PDF · " : "фото · ") + (fl.name || "файл"));
-      link.href = fl.data; link.target = "_blank"; link.rel = "noopener";
-      row.appendChild(link);
-      var rmf = el("button", "btn quiet", "Убрать");
-      rmf.type = "button";
-      rmf.addEventListener("click", function(){ ref.files.splice(idx, 1); persistAnalysis(); drawAnalysisFiles(); });
-      row.appendChild(rmf);
-      fileList.appendChild(row);
-    });
-  }
-  drawAnalysisFiles();
-  var addFileBtn = el("button", "btn soft", "＋ Добавить файл");
-  addFileBtn.type = "button";
-  addFileBtn.addEventListener("click", function(){ fileInp.click(); });
-  fileWrap.appendChild(addFileBtn);
-  fileWrap.appendChild(fileInp);
-  body.appendChild(fileWrap);
+  body.appendChild(labFilesBlock(ref, persistAnalysis));
 
   var saveBtn = el("button", "btn primary", "Сохранить анализ");
   saveBtn.type = "button";
@@ -3702,7 +3795,10 @@ function renderCalendar(){
       dn.addEventListener("click", function(){ it.ref.done = true; save(KEY_EVENTS, events); renderCalendar(); });
       var ed = el("button", "btn soft", "Изменить");
       ed.type = "button";
-      ed.addEventListener("click", function(){ openEventForm(it.ref); });
+      ed.addEventListener("click", function(){
+        if(it.kind === "lab") openLabForm(it.ref, { host: "cal", back: renderCalendar });
+        else openEventForm(it.ref);
+      });
       var rm = el("button", "btn quiet", "Удалить");
       rm.type = "button";
       rm.addEventListener("click", function(){
@@ -3716,10 +3812,15 @@ function renderCalendar(){
     body.appendChild(card);
   });
 
-  var addEv = el("button", "btn primary", "＋ Визит или анализ");
+  var addEv = el("button", "btn primary", "＋ Визит или заметка");
   addEv.type = "button";
   addEv.addEventListener("click", function(){ openEventForm(null); });
   foot.appendChild(addEv);
+
+  var addLab = el("button", "btn soft", "＋ Добавить анализ");
+  addLab.type = "button";
+  addLab.addEventListener("click", function(){ openLabForm(null, { host: "cal", back: renderCalendar }); });
+  foot.appendChild(addLab);
 
   var toMeds = el("button", "btn soft", "Лекарства и обработки");
   toMeds.type = "button";
@@ -3739,7 +3840,9 @@ function openEventForm(existing){
   var ev = existing || { id: makeId(), type: "visit", date: "", title: "", notes: "", done: false };
   var draftType = ev.type || "visit";
 
-  body.appendChild(segControl(EVENT_TYPES, draftType, function(v){ draftType = v; }));
+  /* анализы заводятся отдельной формой (openLabForm) — здесь только визит/заметка */
+  var evTypeOpts = EVENT_TYPES.filter(function(o){ return o.v !== "lab" || draftType === "lab"; });
+  body.appendChild(segControl(evTypeOpts, draftType, function(v){ draftType = v; }));
   var fDate = fieldInput("Дата", ev.date, {type:"date"});
   var fTitle = fieldInput("Коротко", ev.title, {placeholder:"плановый осмотр"});
   var fNotes = fieldInput("Заметки / вопросы врачу", ev.notes, {textarea:true});
