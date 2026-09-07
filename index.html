@@ -358,6 +358,10 @@
   .rep h3{font-size:.8125rem;font-weight:650;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-top:6px}
   .rep .kv{display:flex;gap:8px;font-size:.9rem;line-height:1.45}
   .rep .kv b{min-width:120px;flex:none;color:var(--ink-soft)}
+  .spark{width:100%;height:auto;display:block;margin:2px 0 6px}
+  .spark .ln{fill:none;stroke:var(--sage-deep);stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+  .spark .dot{fill:var(--sage-deep)}
+  .spark text{fill:var(--muted);font-size:11px}
 
   @media print {
     .top, .foot, .iconbtn { display:none !important; }
@@ -3891,6 +3895,35 @@ function kvRow(k, v){
   return d;
 }
 
+/* A3: спарклайн из ряда чисел (в хронологии). Возвращает строку SVG для innerHTML.
+   Универсальный — используется для температуры (A3) и веса (A2). */
+function sparklineSVG(values, opts){
+  opts = opts || {};
+  var n = values.length;
+  if(n < 2) return "";
+  var W = 320, H = 72, L = 4, Rp = 44, TP = 12, BP = 12;
+  var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+  var span = (max - min) || 1;
+  var innerW = W - L - Rp, innerH = H - TP - BP;
+  var pts = [];
+  for(var i = 0; i < n; i++){
+    var x = L + innerW * (i / (n - 1));
+    var y = TP + innerH * (1 - (values[i] - min) / span);
+    pts.push(x.toFixed(1) + "," + y.toFixed(1));
+  }
+  var dots = "";
+  for(var j = 0; j < n; j++){
+    var pp = pts[j].split(",");
+    dots += '<circle class="dot" cx="' + pp[0] + '" cy="' + pp[1] + '" r="2.4"/>';
+  }
+  var u = opts.unit ? (" " + opts.unit) : "";
+  return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
+    '<polyline class="ln" points="' + pts.join(" ") + '"/>' + dots +
+    '<text class="hi" x="' + (W - 3) + '" y="' + (TP + 4) + '" text-anchor="end">' + max.toFixed(1) + u + '</text>' +
+    '<text class="lo" x="' + (W - 3) + '" y="' + (H - 3) + '" text-anchor="end">' + min.toFixed(1) + u + '</text>' +
+    '</svg>';
+}
+
 function renderReportView(){
   var body = $("#reportBody"), foot = $("#reportFoot");
   clear(body); clear(foot);
@@ -3930,9 +3963,23 @@ function renderReportView(){
     }else{
       cc.appendChild(el("div", "hint", "Все проверки за период — в пределах его личной нормы, отдельные дни не расписываем."));
     }
-    var temps = sc.checks.filter(function(e){ return e.answers && typeof e.answers.temp === "number"; })
-      .map(function(e){ return fmtDate.format(new Date(e.ts)) + " — " + e.answers.temp.toFixed(1) + " °C"; });
-    if(temps.length) cc.appendChild(kvRow("Температура", temps.join("; ")));
+    var tPts = [];
+    sc.checks.forEach(function(e){
+      if(e.answers && typeof e.answers.temp === "number") tPts.push({ ts: e.ts, v: e.answers.temp });
+    });
+    tPts.sort(function(a, b){ return a.ts - b.ts; });
+    if(tPts.length){
+      cc.appendChild(el("h3", "", "Температура"));
+      if(tPts.length >= 2){
+        var vals = tPts.map(function(p){ return p.v; });
+        var sw = el("div", "");
+        sw.innerHTML = sparklineSVG(vals, { unit: "°C" });
+        cc.appendChild(sw);
+      }
+      tPts.forEach(function(p){
+        cc.appendChild(el("div", "hint", fmtDate.format(new Date(p.ts)) + " — " + p.v.toFixed(1) + " °C"));
+      });
+    }
     body.appendChild(cc);
   }
 
@@ -4058,6 +4105,13 @@ function buildReportText(sc, p){
       L.push("  " + whenText(e.ts) + " — " + STATUS_TEXT[e.status].title);
       e.red.concat(e.yellow).forEach(function(r){ L.push("    - " + r); });
     });
+    var txPts = [];
+    sc.checks.forEach(function(e){ if(e.answers && typeof e.answers.temp === "number") txPts.push({ ts: e.ts, v: e.answers.temp }); });
+    txPts.sort(function(a, b){ return a.ts - b.ts; });
+    if(txPts.length){
+      L.push("  Температура:");
+      txPts.forEach(function(p){ L.push("    " + fmtDate.format(new Date(p.ts)) + " — " + p.v.toFixed(1) + " °C"); });
+    }
     L.push("");
   }
   if(reportDraft.cats.walks && sc.walks.length){
