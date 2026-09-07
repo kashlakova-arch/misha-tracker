@@ -426,6 +426,7 @@
             <div class="paws" id="dogSex"></div>
           </div>
         </div>
+        <button class="btn soft" id="toWeight" type="button">История веса и график</button>
       </div>
 
       <div class="card field">
@@ -753,6 +754,22 @@
         <button class="btn soft" id="aboutExport" type="button">Скачать резервную копию</button>
       </div>
     </div>
+  </section>
+
+  <!-- ═══ 13. ИСТОРИЯ ВЕСА ═══ -->
+  <section class="screen" id="s-weight">
+    <div class="top">
+      <button class="iconbtn" id="weightBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1>История веса</h1>
+        <div class="sub" id="weightSub"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body" id="weightBody"></div>
+    <div class="foot" id="weightFoot"></div>
   </section>
 
 </div>
@@ -3871,6 +3888,122 @@ $("#calBack").addEventListener("click", function(){ renderHome(); show("s-home")
 $("#medsBack").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
 $("#tickBack").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
 
+/* ═══ Вес — регулярная метрика (§A2) ═══ */
+
+/* weights: [{id,ts,date,kg,note}] — стор создан в 1b, входит в экспорт/импорт/удаление.
+   Не влияет на статус-логику: вес — тренд, не триггер. */
+function weightsSorted(){
+  return weights.slice().sort(function(a, b){
+    var ta = parseDate(a.date); ta = ta ? ta.getTime() : (a.ts || 0);
+    var tb = parseDate(b.date); tb = tb ? tb.getTime() : (b.ts || 0);
+    return ta - tb;
+  });
+}
+
+function renderWeight(){
+  var body = $("#weightBody"), foot = $("#weightFoot");
+  clear(body); clear(foot);
+  var list = weightsSorted();
+  $("#weightSub").textContent = list.length
+    ? list.length + " " + plural(list.length, "замер", "замера", "замеров")
+    : "пока пусто";
+
+  if(!list.length){
+    body.appendChild(el("div", "empty", "Записывайте вес раз в 1–2 недели. График покажет тренд — постепенное снижение или рост врач заметит раньше по цифрам."));
+  }else{
+    if(list.length >= 2){
+      var sw = el("div", "card field");
+      sw.innerHTML = sparklineSVG(list.slice(-12).map(function(w){ return w.kg; }), { unit: "кг" });
+      body.appendChild(sw);
+    }
+    var rows = list.slice().reverse(); /* новые сверху */
+    rows.forEach(function(w, i){
+      var card = el("div", "card field");
+      var head = el("div", "rowline");
+      head.appendChild(el("span", "grow", w.kg.toFixed(1) + " кг"));
+      head.appendChild(el("span", "hint", w.date ? fmtDate.format(parseDate(w.date)) : whenText(w.ts)));
+      card.appendChild(head);
+      var chronIdx = list.length - 1 - i;
+      if(chronIdx > 0){
+        var d = w.kg - list[chronIdx - 1].kg;
+        card.appendChild(el("div", "hint", Math.abs(d) < 0.05
+          ? "без изменений к прошлому замеру"
+          : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1) + " кг к прошлому замеру"));
+      }
+      if(w.note) card.appendChild(el("div", "hint", w.note));
+      var act = el("div", "miniact");
+      var ed = el("button", "btn soft", "Изменить");
+      ed.type = "button";
+      ed.addEventListener("click", function(){ openWeightForm(w); });
+      var rm = el("button", "btn quiet", "Удалить");
+      rm.type = "button";
+      rm.addEventListener("click", function(){
+        weights = weights.filter(function(x){ return x.id !== w.id; });
+        save(KEY_WEIGHTS, weights);
+        syncProfileWeight();
+        renderWeight();
+      });
+      act.appendChild(ed); act.appendChild(rm);
+      card.appendChild(act);
+      body.appendChild(card);
+    });
+  }
+
+  var add = el("button", "btn primary", "＋ Записать вес");
+  add.type = "button";
+  add.addEventListener("click", function(){ openWeightForm(null); });
+  foot.appendChild(add);
+}
+
+/* держим profile.weight равным последнему по хронологии замеру */
+function syncProfileWeight(){
+  if(!profile) return;
+  var last = weightsSorted().pop();
+  var v = last ? String(last.kg) : "";
+  if(v && profile.weight !== v){ profile.weight = v; save(KEY_PROFILE, profile); }
+}
+
+function openWeightForm(existing){
+  var body = $("#weightBody"), foot = $("#weightFoot");
+  clear(body); clear(foot);
+  $("#weightSub").textContent = existing ? "правка замера" : "новый замер";
+  var w = existing || { id: makeId(), ts: Date.now(), date: isoDay(new Date()), kg: null, note: "" };
+
+  var seed = "";
+  if(w.kg != null) seed = String(w.kg);
+  else if(!weights.length){
+    var pw = parseFloat(String((profile && profile.weight) || "").replace(",", "."));
+    if(isFinite(pw) && pw > 0) seed = String(pw);
+  }
+
+  var fDate = fieldInput("Дата замера", w.date || isoDay(new Date()), {type:"date"});
+  var fKg = fieldInput("Вес, кг", seed, {inputMode:"decimal", placeholder:"12.3"});
+  var fNote = fieldInput("Заметка", w.note, {textarea:true, placeholder:"до еды, после стрижки…"});
+  [fDate, fKg, fNote].forEach(function(f){ body.appendChild(f); });
+
+  var saveBtn = el("button", "btn primary", "Сохранить");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    var kg = parseFloat(String(fKg._input.value).replace(",", "."));
+    if(!isFinite(kg) || kg <= 0){ alert("Введите вес числом, например 12.3"); return; }
+    w.kg = Math.round(kg * 10) / 10;
+    w.date = fDate._input.value || isoDay(new Date());
+    w.note = fNote._input.value.trim();
+    if(weights.indexOf(w) < 0){ w.ts = w.ts || Date.now(); weights.push(w); }
+    if(!save(KEY_WEIGHTS, weights)){ alert("Не удалось сохранить."); return; }
+    syncProfileWeight();
+    renderWeight();
+  });
+  foot.appendChild(saveBtn);
+  var cancel = el("button", "btn quiet", "Отмена");
+  cancel.type = "button";
+  cancel.addEventListener("click", renderWeight);
+  foot.appendChild(cancel);
+}
+
+$("#weightBack").addEventListener("click", function(){ renderSetup(profile); show("s-setup"); });
+$("#toWeight").addEventListener("click", function(){ renderWeight(); show("s-weight"); });
+
 /* ══════════════════ Фото к записям · после прогулки · отчёт ══════════════════ */
 
 /* Блок «Фото» для записи дневника: миниатюры + добавление. Правки сразу сохраняются. */
@@ -4025,7 +4158,7 @@ $("#walkBack").addEventListener("click", function(){ renderHome(); show("s-home"
 
 var KEY_REPORTNOTES = "misha.reportNotes";
 var REPORT_PERIODS = [ {v:"7", label:"7 дней"}, {v:"14", label:"14 дней"}, {v:"30", label:"30 дней"}, {v:"0", label:"всё время"} ];
-var reportDraft = { days: 14, cats: { checks:true, walks:true, meds:true, ticks:true, events:true, photos:true }, questions: "" };
+var reportDraft = { days: 14, cats: { checks:true, weights:true, walks:true, meds:true, ticks:true, events:true, photos:true }, questions: "" };
 
 function startReport(){
   reportDraft.questions = load(KEY_REPORTNOTES, "") || "";
@@ -4045,6 +4178,7 @@ function renderReportSetup(){
 
   var cats = [
     {k:"checks", label:"Проверки самочувствия"},
+    {k:"weights", label:"Вес и график"},
     {k:"walks",  label:"Отметки после прогулок"},
     {k:"meds",   label:"Лекарства и обработки"},
     {k:"ticks",  label:"Укусы клеща и анализы"},
@@ -4194,6 +4328,29 @@ function renderReportView(){
     body.appendChild(cc);
   }
 
+  if(reportDraft.cats.weights && weights.length){
+    var wsc = weightsSorted().filter(function(w){
+      var t = parseDate(w.date); t = t ? t.getTime() : w.ts;
+      return !reportDraft.days || t >= sc.since;
+    });
+    if(wsc.length){
+      var gc = el("div", "card rep");
+      gc.appendChild(el("h3", "", "Вес за период"));
+      if(wsc.length >= 2){
+        var gsw = el("div", "");
+        gsw.innerHTML = sparklineSVG(wsc.map(function(w){ return w.kg; }), { unit: "кг" });
+        gc.appendChild(gsw);
+        var wf = wsc[0], wl = wsc[wsc.length - 1], wd = wl.kg - wf.kg;
+        gc.appendChild(el("div", "", wf.kg.toFixed(1) + " → " + wl.kg.toFixed(1) + " кг за период (" +
+          (wd > 0 ? "+" : wd < 0 ? "−" : "±") + Math.abs(wd).toFixed(1) + ")"));
+      }
+      wsc.forEach(function(w){
+        gc.appendChild(el("div", "hint", fmtDate.format(parseDate(w.date) || new Date(w.ts)) + " — " + w.kg.toFixed(1) + " кг" + (w.note ? (" · " + w.note) : "")));
+      });
+      body.appendChild(gc);
+    }
+  }
+
   if(reportDraft.cats.walks && sc.walks.length){
     var wc = el("div", "card rep");
     wc.appendChild(el("h3", "", "После прогулок"));
@@ -4335,6 +4492,17 @@ function buildReportText(sc, p){
       txPts.forEach(function(p){ L.push("    " + fmtDate.format(new Date(p.ts)) + " — " + p.v.toFixed(1) + " °C"); });
     }
     L.push("");
+  }
+  if(reportDraft.cats.weights && weights.length){
+    var wtx = weightsSorted().filter(function(w){
+      var t = parseDate(w.date); t = t ? t.getTime() : w.ts;
+      return !reportDraft.days || t >= sc.since;
+    });
+    if(wtx.length){
+      L.push("ВЕС:");
+      wtx.forEach(function(w){ L.push("  " + fmtDate.format(parseDate(w.date) || new Date(w.ts)) + " — " + w.kg.toFixed(1) + " кг" + (w.note ? (" · " + w.note) : "")); });
+      L.push("");
+    }
   }
   if(reportDraft.cats.walks && sc.walks.length){
     L.push("ПОСЛЕ ПРОГУЛОК:");
