@@ -362,6 +362,7 @@
   .spark .ln{fill:none;stroke:var(--sage-deep);stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
   .spark .dot{fill:var(--sage-deep)}
   .spark text{fill:var(--muted);font-size:11px}
+  input[type="range"]{accent-color:var(--sage-deep);height:28px}
 
   @media print {
     .top, .foot, .iconbtn { display:none !important; }
@@ -491,6 +492,24 @@
       </div>
 
       <div class="card field">
+        <label>Качество жизни (недельная шкала)</label>
+        <div class="hint">Для хроников и пожилых собак. Семь показателей 0–10 раз в неделю — помогает увидеть тренд и обсудить с врачом. Это не оценка «хорошо / плохо», а тема для разговора.</div>
+        <button class="btn soft" id="qolToggle" type="button">Включить недельную оценку</button>
+        <div class="field" id="qolDayField" hidden>
+          <label for="qolDay">День недели для напоминания</label>
+          <select id="qolDay">
+            <option value="0">Воскресенье</option>
+            <option value="1">Понедельник</option>
+            <option value="2">Вторник</option>
+            <option value="3">Среда</option>
+            <option value="4">Четверг</option>
+            <option value="5">Пятница</option>
+            <option value="6">Суббота</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card field">
         <label>Расписание проверок</label>
         <div class="hint">Две спокойные проверки в день. Пропуск — без последствий.</div>
         <div class="grid2">
@@ -562,12 +581,14 @@
       <div class="note" id="homeNext" hidden></div>
       <div class="note" id="homeReminder" hidden></div>
       <div class="note" id="homeMed" hidden></div>
+      <div class="note" id="homeQol" hidden></div>
       <div class="note" id="homeNorm"></div>
     </div>
     <div class="foot">
       <button class="btn primary" id="startCheck">Начать проверку</button>
       <button class="btn warn" id="startQuick">Что-то не так</button>
       <button class="btn quiet" id="startWalk">Отметить после прогулки</button>
+      <button class="btn quiet" id="startQol" hidden>Оценка качества жизни</button>
     </div>
   </section>
 
@@ -781,6 +802,22 @@
     </div>
     <div class="body" id="weightBody"></div>
     <div class="foot" id="weightFoot"></div>
+  </section>
+
+  <!-- ═══ 14. КАЧЕСТВО ЖИЗНИ ═══ -->
+  <section class="screen" id="s-qol">
+    <div class="top">
+      <button class="iconbtn" id="qolBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1>Качество жизни</h1>
+        <div class="sub" id="qolSub"></div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body" id="qolBody"></div>
+    <div class="foot" id="qolFoot"></div>
   </section>
 
 </div>
@@ -1061,8 +1098,8 @@ var PROFILE_DEFAULTS = {
   checkAM:"09:00", checkPM:"20:00",
   clinicName:"", clinicPhone:"", clinicAddr:"",
   clinic24Name:"", clinic24Phone:"", clinic24Addr:"",
-  /* конфиг: reminderOffsetDays (B4), trackSRR/srrNorm (A6, UI в профиле), trackQoL (A8, пока без UI) */
-  reminderOffsetDays:2, trackSRR:false, srrNorm:null, trackQoL:false
+  /* конфиг: reminderOffsetDays (B4), trackSRR/srrNorm (A6), trackQoL/qolDay (A8) — UI в профиле */
+  reminderOffsetDays:2, trackSRR:false, srrNorm:null, trackQoL:false, qolDay:0
 };
 
 function normalizeProfile(p){
@@ -1553,14 +1590,14 @@ function show(id){
 
 /* ══════════════════ Экран 1: профиль ══════════════════ */
 
-var draft = {photo:null, sex:"", skips:0, limpNorm:0, limpPaw:"none", trackSRR:false};
+var draft = {photo:null, sex:"", skips:0, limpNorm:0, limpPaw:"none", trackSRR:false, trackQoL:false};
 
 function setVal(id, v){ var n = $("#"+id); if(n) n.value = (v === null || v === undefined) ? "" : v; }
 function getVal(id){ var n = $("#"+id); return n ? n.value.trim() : ""; }
 
 function renderSetup(existing){
   var src = normalizeProfile(existing ? JSON.parse(JSON.stringify(existing)) : {});
-  draft = {photo:src.photo, sex:src.sex, skips:src.skips, limpNorm:src.limpNorm, limpPaw:src.limpPaw, trackSRR:!!src.trackSRR};
+  draft = {photo:src.photo, sex:src.sex, skips:src.skips, limpNorm:src.limpNorm, limpPaw:src.limpPaw, trackSRR:!!src.trackSRR, trackQoL:!!src.trackQoL};
 
   $("#setupTitle").textContent = existing ? "Профиль Миши" : "Знакомство";
   $("#setupClose").hidden = !existing;
@@ -1573,6 +1610,7 @@ function renderSetup(existing){
   setVal("limpWhen", src.limpWhen); setVal("stoolFreq", src.stoolFreq); setVal("giNotes", src.giNotes);
   setVal("normTemp", src.tempNorm != null ? String(src.tempNorm) : "");
   setVal("srrNorm", src.srrNorm != null ? String(src.srrNorm) : "");
+  var qd = $("#qolDay"); if(qd) qd.value = String(typeof src.qolDay === "number" ? src.qolDay : 0);
   setVal("clinicName", src.clinicName); setVal("clinicPhone", src.clinicPhone); setVal("clinicAddr", src.clinicAddr);
   setVal("clinic24Name", src.clinic24Name); setVal("clinic24Phone", src.clinic24Phone); setVal("clinic24Addr", src.clinic24Addr);
   setVal("checkAM", src.checkAM || "09:00"); setVal("checkPM", src.checkPM || "20:00");
@@ -1583,6 +1621,7 @@ function renderSetup(existing){
   renderLimpNorm();
   renderNormPaws();
   renderSrrToggle();
+  renderQolToggle();
 }
 
 function renderSrrToggle(){
@@ -1593,6 +1632,16 @@ function renderSrrToggle(){
   b.setAttribute("aria-pressed", draft.trackSRR ? "true" : "false");
   var f = $("#srrNormField");
   if(f) f.hidden = !draft.trackSRR;
+}
+
+function renderQolToggle(){
+  var b = $("#qolToggle");
+  if(!b) return;
+  b.textContent = draft.trackQoL ? "Недельная оценка включена" : "Включить недельную оценку";
+  b.classList.toggle("sel", !!draft.trackQoL);
+  b.setAttribute("aria-pressed", draft.trackQoL ? "true" : "false");
+  var f = $("#qolDayField");
+  if(f) f.hidden = !draft.trackQoL;
 }
 
 function showPhoto(){
@@ -1706,6 +1755,8 @@ function readProfileForm(){
     tempNorm: isFinite(t) ? Math.round(t * 10) / 10 : null,
     trackSRR: !!draft.trackSRR,
     srrNorm: (isFinite(srr) && srr > 0) ? srr : null,
+    trackQoL: !!draft.trackQoL,
+    qolDay: (function(){ var n = parseInt(($("#qolDay") || {}).value, 10); return (n >= 0 && n <= 6) ? n : 0; })(),
     checkAM: getVal("checkAM") || "09:00",
     checkPM: getVal("checkPM") || "20:00",
     clinicName: getVal("clinicName"),
@@ -1720,6 +1771,10 @@ function readProfileForm(){
 $("#srrToggle").addEventListener("click", function(){
   draft.trackSRR = !draft.trackSRR;
   renderSrrToggle();
+});
+$("#qolToggle").addEventListener("click", function(){
+  draft.trackQoL = !draft.trackQoL;
+  renderQolToggle();
 });
 
 $("#photoBtn").addEventListener("click", function(){ $("#photoInput").click(); });
@@ -1960,10 +2015,28 @@ function scheduleTick(){
     }
   });
 
+  /* A8: недельная оценка качества жизни — раз в неделю в выбранный день */
+  if(profile && profile.trackQoL){
+    var wd = (typeof profile.qolDay === "number") ? profile.qolDay : 0;
+    var td = new Date();
+    if(td.getDay() === wd && qolDueThisWeek()){
+      var qkey = "qol:" + isoDay(td);
+      if(!map[qkey]){
+        fireNotice("Раз в неделю — короткая оценка качества жизни Миши: семь шкал, пара минут.");
+        map[qkey] = { at:now }; changed = true;
+      }
+    }
+  }
+
   Object.keys(map).forEach(function(k){
     if(k.indexOf("med:") === 0){
       var md = parseDate(k.slice(k.lastIndexOf(":") + 1));
       if(md && now - md.getTime() > 30 * 86400000){ delete map[k]; changed = true; }
+      return;
+    }
+    if(k.indexOf("qol:") === 0){
+      var qd = parseDate(k.slice(4));
+      if(qd && now - qd.getTime() > 14 * 86400000){ delete map[k]; changed = true; }
       return;
     }
     var d = new Date(k.slice(0, 13) + ":00:00Z");
@@ -2019,6 +2092,25 @@ function buildIcs(){
       "END:VEVENT"
     );
   });
+  /* A8: недельная оценка качества жизни */
+  if(profile && profile.trackQoL){
+    var qwd = (typeof profile.qolDay === "number") ? profile.qolDay : 0;
+    var qs = new Date(now); qs.setHours(19, 0, 0, 0);
+    qs.setDate(qs.getDate() + ((qwd - qs.getDay() + 7) % 7));
+    if(qs < now) qs.setDate(qs.getDate() + 7);
+    lines.push(
+      "BEGIN:VEVENT",
+      "UID:misha-qol@local",
+      "DTSTAMP:" + stampUTC(now),
+      "DTSTART:" + localStamp(qs),
+      "DURATION:PT15M",
+      "RRULE:FREQ=WEEKLY",
+      "SUMMARY:Качество жизни Миши — недельная оценка",
+      "DESCRIPTION:Семь шкал 0–10 (боль, аппетит, питьё, чистота, настроение, подвижность, хорошие дни).",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Оценка качества жизни Миши", "TRIGGER:PT0M", "END:VALARM",
+      "END:VEVENT"
+    );
+  }
   lines.push("END:VCALENDAR");
   return lines.join("\r\n");
 }
@@ -2145,6 +2237,7 @@ function renderHome(){
 
   renderReminder();
   renderMedReminder();
+  renderQolHome();
   renderNext();
   updateStartButton();
 }
@@ -4480,6 +4573,180 @@ function openWeightForm(existing){
 $("#weightBack").addEventListener("click", function(){ renderSetup(profile); show("s-setup"); });
 $("#toWeight").addEventListener("click", function(){ renderWeight(); show("s-weight"); });
 
+/* ═══ Качество жизни — недельная шкала Villalobos (§A8) ═══ */
+
+var QOL_ITEMS = [
+  {k:"hurt",         label:"Боль",              hint:"0 — сильная боль, 10 — боли нет"},
+  {k:"hunger",       label:"Аппетит",           hint:"0 — не ест, 10 — ест охотно"},
+  {k:"hydration",    label:"Питьё и влага",     hint:"0 — обезвожен, 10 — пьёт нормально"},
+  {k:"hygiene",      label:"Чистота шерсти",    hint:"0 — не может себя содержать, 10 — чистый"},
+  {k:"happiness",    label:"Настроение",        hint:"0 — апатия, 10 — радуется как обычно"},
+  {k:"mobility",     label:"Подвижность",       hint:"0 — не встаёт, 10 — двигается как обычно"},
+  {k:"moreGoodDays", label:"Хороших дней больше", hint:"0 — плохих дней больше, 10 — хороших явно больше"}
+];
+var QOL_MAX = QOL_ITEMS.length * 10;   /* 70 */
+var QOL_OK_TOTAL = 35;                 /* Villalobos: сумма > 35 — приемлемо */
+
+function qolSorted(){
+  return qol.slice().sort(function(a, b){
+    var ta = parseDate(a.date); ta = ta ? ta.getTime() : (a.ts || 0);
+    var tb = parseDate(b.date); tb = tb ? tb.getTime() : (b.ts || 0);
+    return ta - tb;
+  });
+}
+function qolLow(entry){
+  if(!entry) return false;
+  if((entry.total || 0) < QOL_OK_TOTAL) return true;
+  var s = entry.scores || {};
+  return QOL_ITEMS.some(function(it){ return typeof s[it.k] === "number" && s[it.k] < 5; });
+}
+/* нет оценки за последние 7 дней */
+function qolDueThisWeek(){
+  var last = qolSorted().pop();
+  if(!last) return true;
+  var t = parseDate(last.date); t = t ? t.getTime() : last.ts;
+  return (Date.now() - t) > 6 * 86400000;
+}
+
+function renderQol(){
+  var body = $("#qolBody"), foot = $("#qolFoot");
+  clear(body); clear(foot);
+  var list = qolSorted();
+  $("#qolSub").textContent = list.length
+    ? list.length + " " + plural(list.length, "оценка", "оценки", "оценок")
+    : "пока пусто";
+
+  body.appendChild(el("div", "note", "Семь показателей 0–10. Сумма больше " + QOL_OK_TOTAL + " из " + QOL_MAX + " обычно считается приемлемой. Низкие значения — не приговор, а повод спокойно обсудить с врачом."));
+
+  if(!list.length){
+    body.appendChild(el("div", "empty", "Оценок ещё нет. Раз в неделю — семь коротких шкал, пара минут."));
+  }else{
+    if(list.length >= 2){
+      var sw = el("div", "card field");
+      sw.innerHTML = sparklineSVG(list.slice(-12).map(function(q){ return q.total; }), { unit: "" });
+      body.appendChild(sw);
+    }
+    list.slice().reverse().forEach(function(q){
+      var card = el("div", "card field");
+      var head = el("div", "rowline");
+      head.appendChild(el("span", "grow", q.total + " из " + QOL_MAX));
+      head.appendChild(el("span", "hint", q.date ? fmtDate.format(parseDate(q.date)) : whenText(q.ts)));
+      card.appendChild(head);
+      if(qolLow(q)) card.appendChild(el("div", "hint", "есть на что обратить внимание — стоит показать врачу"));
+      var bits = QOL_ITEMS.map(function(it){ return it.label.toLowerCase() + " " + ((q.scores || {})[it.k]); });
+      card.appendChild(el("div", "hint", bits.join(" · ")));
+      if(q.note) card.appendChild(el("div", "hint", q.note));
+      var act = el("div", "miniact");
+      var ed = el("button", "btn soft", "Изменить");
+      ed.type = "button";
+      ed.addEventListener("click", function(){ openQolForm(q); });
+      var rm = el("button", "btn quiet", "Удалить");
+      rm.type = "button";
+      rm.addEventListener("click", function(){
+        qol = qol.filter(function(x){ return x.id !== q.id; });
+        save(KEY_QOL, qol);
+        renderQol();
+      });
+      act.appendChild(ed); act.appendChild(rm);
+      card.appendChild(act);
+      body.appendChild(card);
+    });
+  }
+
+  var add = el("button", "btn primary", "＋ Новая оценка");
+  add.type = "button";
+  add.addEventListener("click", function(){ openQolForm(null); });
+  foot.appendChild(add);
+}
+
+function openQolForm(existing){
+  var body = $("#qolBody"), foot = $("#qolFoot");
+  clear(body); clear(foot);
+  $("#qolSub").textContent = existing ? "правка оценки" : "новая оценка";
+  var q = existing || { id: makeId(), ts: Date.now(), date: isoDay(new Date()), scores:{}, total:0, note:"" };
+  var scores = {};
+  QOL_ITEMS.forEach(function(it){
+    scores[it.k] = (q.scores && typeof q.scores[it.k] === "number") ? q.scores[it.k] : 5;
+  });
+
+  var fDate = fieldInput("Дата оценки", q.date || isoDay(new Date()), {type:"date"});
+  body.appendChild(fDate);
+
+  var totalLine = el("div", "note");
+  function paintTotal(){
+    var t = 0;
+    QOL_ITEMS.forEach(function(it){ t += scores[it.k]; });
+    var low = t < QOL_OK_TOTAL || QOL_ITEMS.some(function(it){ return scores[it.k] < 5; });
+    totalLine.textContent = "Сумма: " + t + " из " + QOL_MAX + (low ? " · стоит обсудить с врачом" : " · в целом приемлемо");
+    return t;
+  }
+
+  QOL_ITEMS.forEach(function(it){
+    var wrap = el("div", "field");
+    var head = el("div", "rowline");
+    head.appendChild(el("label", "grow", it.label));
+    var valEl = el("span", "", String(scores[it.k]));
+    head.appendChild(valEl);
+    wrap.appendChild(head);
+    var rng = el("input");
+    rng.type = "range"; rng.min = "0"; rng.max = "10"; rng.step = "1";
+    rng.value = String(scores[it.k]);
+    rng.style.width = "100%";
+    rng.setAttribute("aria-label", it.label);
+    rng.addEventListener("input", function(){
+      scores[it.k] = parseInt(rng.value, 10) || 0;
+      valEl.textContent = String(scores[it.k]);
+      paintTotal();
+    });
+    wrap.appendChild(rng);
+    wrap.appendChild(el("div", "hint", it.hint));
+    body.appendChild(wrap);
+  });
+
+  body.appendChild(totalLine);
+  paintTotal();
+
+  var fNote = fieldInput("Заметка", q.note, {textarea:true, placeholder:"что повлияло на оценку"});
+  body.appendChild(fNote);
+
+  var saveBtn = el("button", "btn primary", "Сохранить");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    q.date = fDate._input.value || isoDay(new Date());
+    q.scores = {};
+    var t = 0;
+    QOL_ITEMS.forEach(function(it){ q.scores[it.k] = scores[it.k]; t += scores[it.k]; });
+    q.total = t;
+    q.note = fNote._input.value.trim();
+    if(qol.indexOf(q) < 0){ q.ts = q.ts || Date.now(); qol.push(q); }
+    if(!save(KEY_QOL, qol)){ alert("Не удалось сохранить."); return; }
+    renderQol();
+  });
+  foot.appendChild(saveBtn);
+  var cancel = el("button", "btn quiet", "Отмена");
+  cancel.type = "button";
+  cancel.addEventListener("click", renderQol);
+  foot.appendChild(cancel);
+}
+
+function renderQolHome(){
+  var btn = $("#startQol"), box = $("#homeQol");
+  var on = !!(profile && profile.trackQoL);
+  if(btn) btn.hidden = !on;
+  if(!box) return;
+  if(on && qolDueThisWeek()){
+    clear(box);
+    box.hidden = false;
+    box.appendChild(el("b", "", "Качество жизни. "));
+    box.appendChild(document.createTextNode("На этой неделе оценку ещё не делали — семь шкал, пара минут."));
+  }else{
+    box.hidden = true;
+  }
+}
+
+$("#qolBack").addEventListener("click", function(){ renderHome(); show("s-home"); });
+$("#startQol").addEventListener("click", function(){ renderQol(); show("s-qol"); });
+
 /* ══════════════════ Фото к записям · после прогулки · отчёт ══════════════════ */
 
 /* Блок «Фото» для записи дневника: миниатюры + добавление. Правки сразу сохраняются. */
@@ -4634,7 +4901,7 @@ $("#walkBack").addEventListener("click", function(){ renderHome(); show("s-home"
 
 var KEY_REPORTNOTES = "misha.reportNotes";
 var REPORT_PERIODS = [ {v:"7", label:"7 дней"}, {v:"14", label:"14 дней"}, {v:"30", label:"30 дней"}, {v:"0", label:"всё время"} ];
-var reportDraft = { days: 14, cats: { checks:true, weights:true, walks:true, meds:true, visits:true, ticks:true, events:true, photos:true }, questions: "" };
+var reportDraft = { days: 14, cats: { checks:true, weights:true, qol:true, walks:true, meds:true, visits:true, ticks:true, events:true, photos:true }, questions: "" };
 
 function startReport(){
   reportDraft.questions = load(KEY_REPORTNOTES, "") || "";
@@ -4655,6 +4922,7 @@ function renderReportSetup(){
   var cats = [
     {k:"checks", label:"Проверки самочувствия"},
     {k:"weights", label:"Вес и график"},
+    {k:"qol",    label:"Качество жизни"},
     {k:"walks",  label:"Отметки после прогулок"},
     {k:"meds",   label:"Лекарства, обработки, прививки"},
     {k:"visits", label:"Визиты к врачу"},
@@ -4825,6 +5093,28 @@ function renderReportView(){
         gc.appendChild(el("div", "hint", fmtDate.format(parseDate(w.date) || new Date(w.ts)) + " — " + w.kg.toFixed(1) + " кг" + (w.note ? (" · " + w.note) : "")));
       });
       body.appendChild(gc);
+    }
+  }
+
+  if(reportDraft.cats.qol && qol.length){
+    var qsc = qolSorted().filter(function(q){
+      var t = parseDate(q.date); t = t ? t.getTime() : q.ts;
+      return !reportDraft.days || t >= sc.since;
+    });
+    if(qsc.length){
+      var qc = el("div", "card rep");
+      qc.appendChild(el("h3", "", "Качество жизни за период"));
+      if(qsc.length >= 2){
+        var qsw = el("div", "");
+        qsw.innerHTML = sparklineSVG(qsc.map(function(q){ return q.total; }), { unit: "" });
+        qc.appendChild(qsw);
+      }
+      qsc.forEach(function(q){
+        qc.appendChild(el("div", "", fmtDate.format(parseDate(q.date) || new Date(q.ts)) + " — " + q.total + " из " + QOL_MAX + (qolLow(q) ? " · есть низкие показатели" : "")));
+        qc.appendChild(el("div", "hint", QOL_ITEMS.map(function(it){ return it.label.toLowerCase() + " " + ((q.scores || {})[it.k]); }).join(" · ")));
+        if(q.note) qc.appendChild(el("div", "hint", q.note));
+      });
+      body.appendChild(qc);
     }
   }
 
@@ -5006,6 +5296,21 @@ function buildReportText(sc, p){
     if(wtx.length){
       L.push("ВЕС:");
       wtx.forEach(function(w){ L.push("  " + fmtDate.format(parseDate(w.date) || new Date(w.ts)) + " — " + w.kg.toFixed(1) + " кг" + (w.note ? (" · " + w.note) : "")); });
+      L.push("");
+    }
+  }
+  if(reportDraft.cats.qol && qol.length){
+    var qtx = qolSorted().filter(function(q){
+      var t = parseDate(q.date); t = t ? t.getTime() : q.ts;
+      return !reportDraft.days || t >= sc.since;
+    });
+    if(qtx.length){
+      L.push("КАЧЕСТВО ЖИЗНИ (сумма из " + QOL_MAX + "):");
+      qtx.forEach(function(q){
+        L.push("  " + fmtDate.format(parseDate(q.date) || new Date(q.ts)) + " — " + q.total + (qolLow(q) ? " (есть низкие показатели)" : ""));
+        L.push("    " + QOL_ITEMS.map(function(it){ return it.label.toLowerCase() + " " + ((q.scores || {})[it.k]); }).join(", "));
+        if(q.note) L.push("    " + q.note);
+      });
       L.push("");
     }
   }
