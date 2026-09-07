@@ -3265,6 +3265,29 @@ function tickControlDay(t){
   return Math.round((today - base) / 86400000) + 1;
 }
 
+/* A4: веха «обсудить анализ на клещевые инфекции ~4–6 недель после снятия».
+   Один раз на тик (флаг t.followUpEventId), дата = (removedAt || foundAt) + 35 дней.
+   Удаляется вместе с тиком; если веху убрали вручную — не пересоздаём. */
+function syncTickFollowUp(t){
+  if(!t || t.followUpEventId) return false;
+  var base = parseDate(t.removedAt) || parseDate(t.foundAt);
+  if(!base) return false;
+  var d = new Date(base); d.setDate(d.getDate() + 35);
+  var now = Date.now();
+  var ev = {
+    id: makeId(), type: "lab", date: isoDay(d),
+    title: "Обсудить анализ на клещевые инфекции",
+    labType: "", lab: "", result: "", vetComment: "",
+    files: [], done: false, notes: "~4–6 недель после снятия клеща",
+    linkedVisitId: null, linkedTickId: t.id,
+    createdAt: now, enteredAt: now
+  };
+  events.unshift(ev);
+  t.followUpEventId = ev.id;
+  save(KEY_EVENTS, events);
+  return true;
+}
+
 function renderTickScreen(){
   var body = $("#tickBody"), foot = $("#tickFoot");
   clear(body); clear(foot);
@@ -3290,6 +3313,7 @@ function tickLabs(t){
     for(var i = 0; i < events.length; i++){
       var ev = events[i];
       if(!ev || ev.type !== "lab" || ev.linkedTickId !== t.id) continue;
+      if(ev.id === t.followUpEventId) continue; /* A4: веха-напоминание — не анализ, показывается отдельной строкой */
       out.push({
         id: ev.id, date: ev.date || "",
         type: ev.labType || ev.title || "",
@@ -3327,10 +3351,16 @@ function tickCard(t){
   }else if(day > TICK_CONTROL_DAYS){
     if(day <= 90){
       var longEnd = tickBase(t); longEnd.setDate(longEnd.getDate() + 90);
-      card.appendChild(el("div", "hint", "Активный контроль завершён. Длительное наблюдение до " + fmtDate.format(longEnd) + " — по согласованию с врачом."));
+      card.appendChild(el("div", "hint", "Активная фаза (21 день) завершена. Следите за самочувствием ещё до ~3 месяцев после укуса; при новых признаках — к врачу. Ориентир — " + fmtDate.format(longEnd) + "."));
     }else{
-      card.appendChild(el("div", "hint", "Наблюдение завершено."));
+      card.appendChild(el("div", "hint", "С укуса прошло больше 3 месяцев."));
     }
+  }
+
+  if(t.followUpEventId){
+    var fu = null;
+    for(var fi = 0; fi < events.length; fi++) if(events[fi].id === t.followUpEventId){ fu = events[fi]; break; }
+    if(fu && !fu.done) card.appendChild(el("div", "hint", "Рекомендованный анализ: " + whenDayText(fu.date)));
   }
 
   var bits = [];
@@ -3438,6 +3468,7 @@ function openTickForm(existing){
   addAn.addEventListener("click", function(){
     commit();
     if(ticks.indexOf(t) < 0){ t.createdAt = t.createdAt || Date.now(); ticks.unshift(t); }
+    syncTickFollowUp(t);
     t.analyses = t.analyses || [];
     var a = { id: makeId(), date: "", type: "", lab: "", result: "", comment: "" };
     t.analyses.push(a);
@@ -3462,6 +3493,7 @@ function openTickForm(existing){
   saveBtn.addEventListener("click", function(){
     commit();
     if(ticks.indexOf(t) < 0){ t.createdAt = t.createdAt || Date.now(); ticks.unshift(t); }
+    syncTickFollowUp(t);
     if(!save(KEY_TICKS, ticks)) alert("Не удалось сохранить — возможно, фото слишком большие.");
     renderTickScreen();
   });
@@ -3474,6 +3506,10 @@ function openTickForm(existing){
       if(!confirm("Удалить эту запись об укусе клеща?")) return;
       ticks = ticks.filter(function(x){ return x.id !== t.id; });
       save(KEY_TICKS, ticks);
+      if(t.followUpEventId){
+        events = events.filter(function(x){ return x.id !== t.followUpEventId; });
+        save(KEY_EVENTS, events);
+      }
       renderTickScreen();
     });
     foot.appendChild(del);
@@ -4092,7 +4128,12 @@ function renderReportView(){
     ticks.forEach(function(t){
       tc.appendChild(el("div", "", "Обнаружен " + (t.foundAt ? whenDayText(t.foundAt) : "—") + (t.place ? ", " + t.place : "")));
       var day = tickControlDay(t);
-      tc.appendChild(el("div", "hint", (day >= 1 && day <= TICK_CONTROL_DAYS) ? ("контроль: день " + day + " из " + TICK_CONTROL_DAYS) : "контроль завершён"));
+      tc.appendChild(el("div", "hint", (day >= 1 && day <= TICK_CONTROL_DAYS) ? ("контроль: день " + day + " из " + TICK_CONTROL_DAYS) : "активная фаза (21 день) завершена"));
+      if(t.followUpEventId){
+        var rfu = null;
+        for(var ri = 0; ri < events.length; ri++) if(events[ri].id === t.followUpEventId){ rfu = events[ri]; break; }
+        if(rfu) tc.appendChild(el("div", "hint", "рекомендованный анализ: " + whenDayText(rfu.date) + (rfu.done ? " (выполнено)" : "")));
+      }
       tickLabs(t).forEach(function(a){
         tc.appendChild(el("div", "hint", "анализ " + (a.date ? whenDayText(a.date) + " " : "") + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? (" — " + a.comment) : "") + (a.files && a.files.length ? (" · файлов: " + a.files.length) : "")));
       });
