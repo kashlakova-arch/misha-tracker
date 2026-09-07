@@ -309,6 +309,10 @@
   }
   .note b{font-weight:650}
 
+  #s-about .about-list{list-style:none;margin:8px 0 4px;padding:0;display:flex;flex-direction:column;gap:8px}
+  #s-about .about-list li{position:relative;padding-left:18px;font-size:.9375rem;color:var(--ink-soft);line-height:1.45}
+  #s-about .about-list li::before{content:"—";position:absolute;left:0;color:var(--muted)}
+
   .divider{height:1px;background:var(--line);margin:2px 0}
 
   .checkline{
@@ -508,6 +512,10 @@
         <input type="file" id="importInput" accept="application/json,.json" hidden>
         <button class="btn quiet" id="wipeBtn" type="button">Удалить все данные</button>
       </div>
+
+      <div class="card field">
+        <button class="btn quiet" id="aboutBtn" type="button">О программе и дисклеймеры</button>
+      </div>
     </div>
     <div class="foot">
       <button class="btn primary" id="setupSave">Сохранить</button>
@@ -694,6 +702,52 @@
     </div>
     <div class="body" id="reportBody"></div>
     <div class="foot" id="reportFoot"></div>
+  </section>
+
+  <!-- ═══ 12. О ПРОГРАММЕ ═══ -->
+  <section class="screen" id="s-about">
+    <div class="top">
+      <button class="iconbtn" id="aboutBack" aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1>О программе</h1>
+        <div class="sub">Миша · трекер самочувствия</div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div class="body">
+      <div class="note">Это инструмент наблюдения и организации записей. Он сравнивает сегодняшнее самочувствие Миши с его личной нормой и помогает не потерять историю — даты проверок, температуру, приёмы лекарств, находки клещей.</div>
+
+      <div class="card field">
+        <label>Чего приложение не делает</label>
+        <ul class="about-list">
+          <li>не ставит диагноз;</li>
+          <li>не назначает лечение и дозировки;</li>
+          <li>не оценивает безопасность и совместимость лекарств;</li>
+          <li>не заменяет очный осмотр ветеринара.</li>
+        </ul>
+        <div class="hint">Жёлтый статус — это «стоит присмотреться, и если не проходит — показать врачу», а не тревога. Красный — повод позвонить в клинику.</div>
+      </div>
+
+      <div class="note">Ежедневные проверки помогают замечать изменения, но у части людей частые самопроверки усиливают тревогу. Если чувствуете, что приложение вас накручивает — сократите частоту проверок, это нормально.</div>
+
+      <div class="card field">
+        <label>Пороги и правила</label>
+        <div class="hint">Версия правил оценки: <b id="aboutRulesVer">—</b>. Пороги (температура, часы без еды, число мелких отличий) — продуктовые: подобраны по литературе и подлежат подтверждению ветеринаром.</div>
+      </div>
+
+      <div class="card field">
+        <label>Правовой статус</label>
+        <div class="hint">Приложение не является медицинским изделием и не предназначено для диагностики или лечения. Все решения о здоровье Миши принимает ветеринарный врач.</div>
+      </div>
+
+      <div class="card field">
+        <label>Резервная копия</label>
+        <div class="hint">Все данные хранятся только на этом устройстве. Регулярно сохраняйте копию, чтобы не потерять историю.</div>
+        <button class="btn soft" id="aboutExport" type="button">Скачать резервную копию</button>
+      </div>
+    </div>
   </section>
 
 </div>
@@ -1665,6 +1719,14 @@ $("#exportBtn").addEventListener("click", function(){
 });
 
 $("#importBtn").addEventListener("click", function(){ $("#importInput").click(); });
+
+/* Экран «О программе» (A1): статический, точка входа — внизу профиля */
+$("#aboutBtn").addEventListener("click", function(){
+  $("#aboutRulesVer").textContent = RULES.version;
+  show("s-about");
+});
+$("#aboutBack").addEventListener("click", function(){ renderSetup(profile); show("s-setup"); });
+$("#aboutExport").addEventListener("click", function(){ $("#exportBtn").click(); });
 $("#importInput").addEventListener("change", function(){
   var file = this.files && this.files[0];
   this.value = "";
