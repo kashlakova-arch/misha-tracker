@@ -1,5 +1,5 @@
 /* Misha Health Tracker — офлайн-кэш. Данные приложения лежат в IndexedDB, здесь только файлы приложения. */
-var CACHE = "misha-v16";
+var CACHE = "misha-v17";
 /* Только обработанные ассеты. Исходники из assets/source/ не кэшируем. */
 var ASSETS = [
   "./", "./index.html", "./manifest.json", "./assets/misha.webp",
@@ -23,11 +23,17 @@ self.addEventListener("activate", function(e){
   );
 });
 
-/* Сеть сначала, кэш — как запасной вариант: приложение открывается и без интернета. */
+/* Сеть сначала, кэш — как запасной вариант: приложение открывается и без интернета.
+   Для навигаций и файлов приложения (html/json/js/корень) идём в сеть в обход
+   HTTP-кэша Safari — иначе после деплоя до ~10 минут отдаётся старая версия. */
 self.addEventListener("fetch", function(e){
   if(e.request.method !== "GET") return;
+  var url = e.request.url;
+  var fresh = e.request.mode === "navigate" || url.charAt(url.length - 1) === "/" ||
+    /\.(?:html|json|js)(?:\?|$)/.test(url);
+  var reqP = fresh ? fetch(url, { cache: "no-store" }) : fetch(e.request);
   e.respondWith(
-    fetch(e.request).then(function(res){
+    reqP.then(function(res){
       var copy = res.clone();
       caches.open(CACHE).then(function(c){ c.put(e.request, copy); }).catch(function(){});
       return res;
