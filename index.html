@@ -929,10 +929,14 @@ function finishBoot(){
   var profileWasThin = profile && profile.reminderOffsetDays === undefined;
   if(profile) normalizeProfile(profile);
   var medsChanged = normalizeMeds(meds);
+  /* Шаг 1c: перенести анализы клеща в events до normalizeEvents,
+     чтобы новые lab-записи прошли ту же нормализацию. */
+  var tickLabMig = migrateTickAnalyses(ticks, events);
   var eventsChanged = normalizeEvents(events);
   if(profileWasThin && profile) save(KEY_PROFILE, profile);
   if(medsChanged) save(KEY_MEDS, meds);
-  if(eventsChanged) save(KEY_EVENTS, events);
+  if(tickLabMig.ticksChanged) save(KEY_TICKS, ticks);
+  if(tickLabMig.eventsChanged || eventsChanged) save(KEY_EVENTS, events);
   startApp();
 }
 
@@ -1039,6 +1043,54 @@ function normalizeEvents(list){
     }
   }
   return changed;
+}
+
+/* Шаг 1c: анализы клеща (ticks[].analyses[]) переносим в events как type:"lab"
+   с linkedTickId. Inline-массив НЕ удаляем — его читают с запасным вариантом
+   (окончательно уберёт микрошаг 14). Флаг ticks[i]._analysesMigrated не даёт
+   продублировать записи при следующем старте; дедуп по id — дополнительная страховка. */
+function migrateTickAnalyses(ticksList, eventsList){
+  var res = { ticksChanged:false, eventsChanged:false };
+  if(!Array.isArray(ticksList) || !Array.isArray(eventsList)) return res;
+  var haveId = {};
+  for(var e = 0; e < eventsList.length; e++){
+    if(eventsList[e] && eventsList[e].id) haveId[eventsList[e].id] = true;
+  }
+  for(var i = 0; i < ticksList.length; i++){
+    var t = ticksList[i];
+    if(!t || typeof t !== "object") continue;
+    if(t._analysesMigrated === true) continue;
+    var an = Array.isArray(t.analyses) ? t.analyses : [];
+    for(var j = 0; j < an.length; j++){
+      var a = an[j];
+      if(!a || typeof a !== "object") continue;
+      var id = a.id || makeId();
+      if(haveId[id]) continue; /* уже перенесён */
+      var stamp = (typeof a.createdAt === "number") ? a.createdAt
+                : (typeof t.createdAt === "number") ? t.createdAt : Date.now();
+      eventsList.push({
+        id: id, type: "lab",
+        date: a.date || "",
+        title: a.type || "",
+        labType: a.type || "",
+        lab: a.lab || "",
+        result: a.result || "",
+        vetComment: a.comment || "",
+        file: null,
+        done: true,
+        notes: "",
+        linkedVisitId: null,
+        linkedTickId: t.id || null,
+        createdAt: stamp,
+        enteredAt: stamp
+      });
+      haveId[id] = true;
+      res.eventsChanged = true;
+    }
+    t._analysesMigrated = true;
+    res.ticksChanged = true;
+  }
+  return res;
 }
 
 /* profile / entries / meds / ticks / events объявлены в разделе «Хранилище» и
@@ -2879,6 +2931,38 @@ function renderTickScreen(){
   foot.appendChild(add);
 }
 
+/* Шаг 1c: анализы клеща читаем из events (type:"lab" + linkedTickId), с запасным
+   чтением из устаревшего t.analyses (пока его не убрал микрошаг 14). Каждая строка
+   приведена к единой форме {id,date,type,lab,result,comment} + _src/_ref для правок. */
+function tickLabs(t){
+  var out = [], seen = {};
+  if(t && t.id){
+    for(var i = 0; i < events.length; i++){
+      var ev = events[i];
+      if(!ev || ev.type !== "lab" || ev.linkedTickId !== t.id) continue;
+      out.push({
+        id: ev.id, date: ev.date || "",
+        type: ev.labType || ev.title || "",
+        lab: ev.lab || "", result: ev.result || "",
+        comment: (ev.vetComment != null ? ev.vetComment : "") || "",
+        _src: "event", _ref: ev
+      });
+      if(ev.id) seen[ev.id] = true;
+    }
+  }
+  var inline = (t && Array.isArray(t.analyses)) ? t.analyses : [];
+  for(var j = 0; j < inline.length; j++){
+    var a = inline[j];
+    if(!a || (a.id && seen[a.id])) continue;
+    out.push({
+      id: a.id, date: a.date || "", type: a.type || "",
+      lab: a.lab || "", result: a.result || "", comment: a.comment || "",
+      _src: "inline", _ref: a
+    });
+  }
+  return out;
+}
+
 function tickCard(t){
   var card = el("div", "card field");
   card.appendChild(el("div", "", "Укус клеща · " + (t.foundAt ? whenDayText(t.foundAt) : "дата не указана")));
@@ -2902,7 +2986,8 @@ function tickCard(t){
   if(t.fullness) bits.push(tickFullLabel(t.fullness).toLowerCase());
   if(t.method) bits.push("снят: " + t.method);
   if(bits.length) card.appendChild(el("div", "hint", bits.join(" · ")));
-  if(t.analyses && t.analyses.length) card.appendChild(el("div", "hint", "Анализы: " + t.analyses.length));
+  var cardLabs = tickLabs(t);
+  if(cardLabs.length) card.appendChild(el("div", "hint", "Анализы: " + cardLabs.length));
 
   var open = el("button", "btn soft", "Открыть");
   open.type = "button";
@@ -2970,7 +3055,7 @@ function openTickForm(existing){
   anWrap.appendChild(anList);
   function drawAnalyses(){
     clear(anList);
-    (t.analyses || []).forEach(function(a, idx){
+    tickLabs(t).forEach(function(a){
       var row = el("div", "rowline");
       row.appendChild(el("span", "hint grow", [a.date && whenDayText(a.date), a.type, a.lab, a.result].filter(Boolean).join(" · ") || "анализ"));
       var ed = el("button", "btn quiet", "Изм.");
@@ -2978,7 +3063,17 @@ function openTickForm(existing){
       ed.addEventListener("click", function(){ commit(); openAnalysisForm(t, a, function(){ openTickForm(t); }); });
       var rm = el("button", "btn quiet", "Убрать");
       rm.type = "button";
-      rm.addEventListener("click", function(){ t.analyses.splice(idx, 1); save(KEY_TICKS, ticks); drawAnalyses(); });
+      rm.addEventListener("click", function(){
+        if(a._src === "event"){
+          events = events.filter(function(x){ return x !== a._ref; });
+          save(KEY_EVENTS, events);
+        }else{
+          var k = (t.analyses || []).indexOf(a._ref);
+          if(k >= 0) t.analyses.splice(k, 1);
+          save(KEY_TICKS, ticks);
+        }
+        drawAnalyses();
+      });
       row.appendChild(ed); row.appendChild(rm);
       anList.appendChild(row);
     });
@@ -3035,10 +3130,14 @@ function openTickForm(existing){
   foot.appendChild(cancel);
 }
 
+/* a — либо сырой inline-объект анализа (из «＋ Добавить анализ»), либо строка из
+   tickLabs() с _src/_ref. Пишем обратно в родную форму источника. */
 function openAnalysisForm(tick, a, back){
   var body = $("#tickBody"), foot = $("#tickFoot");
   clear(body); clear(foot);
   $("#tickSub").textContent = "анализ";
+  var isEvent = a && a._src === "event";
+  var ref = (a && a._ref) || a;
   var fDate = fieldInput("Дата", a.date, {type:"date"});
   var fType = fieldInput("Тип анализа", a.type, {placeholder:"ПЦР на возбудителей"});
   var fLab = fieldInput("Лаборатория", a.lab, {});
@@ -3049,12 +3148,21 @@ function openAnalysisForm(tick, a, back){
   var saveBtn = el("button", "btn primary", "Сохранить анализ");
   saveBtn.type = "button";
   saveBtn.addEventListener("click", function(){
-    a.date = fDate._input.value;
-    a.type = fType._input.value.trim();
-    a.lab = fLab._input.value.trim();
-    a.result = fResult._input.value.trim();
-    a.comment = fComment._input.value.trim();
-    save(KEY_TICKS, ticks);
+    var date = fDate._input.value;
+    var type = fType._input.value.trim();
+    var lab = fLab._input.value.trim();
+    var result = fResult._input.value.trim();
+    var comment = fComment._input.value.trim();
+    if(isEvent){
+      ref.date = date; ref.labType = type; ref.title = type;
+      ref.lab = lab; ref.result = result; ref.vetComment = comment;
+      save(KEY_EVENTS, events);
+    }else{
+      ref.date = date; ref.type = type; ref.lab = lab; ref.result = result; ref.comment = comment;
+      /* новый/правленый inline-анализ подхватит миграция при следующем старте */
+      tick._analysesMigrated = false;
+      save(KEY_TICKS, ticks);
+    }
     back();
   });
   foot.appendChild(saveBtn);
@@ -3515,7 +3623,7 @@ function renderReportView(){
       tc.appendChild(el("div", "", "Обнаружен " + (t.foundAt ? whenDayText(t.foundAt) : "—") + (t.place ? ", " + t.place : "")));
       var day = tickControlDay(t);
       tc.appendChild(el("div", "hint", (day >= 1 && day <= TICK_CONTROL_DAYS) ? ("контроль: день " + day + " из " + TICK_CONTROL_DAYS) : "контроль завершён"));
-      (t.analyses || []).forEach(function(a){
+      tickLabs(t).forEach(function(a){
         tc.appendChild(el("div", "hint", "анализ " + (a.date ? whenDayText(a.date) + " " : "") + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? (" — " + a.comment) : "")));
       });
     });
@@ -3523,7 +3631,9 @@ function renderReportView(){
   }
 
   if(reportDraft.cats.events && events.length){
-    var evs = events.slice().sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
+    /* анализы клеща показаны в разделе «Укусы клеща» — не дублируем */
+    var evs = events.filter(function(ev){ return !(ev.type === "lab" && ev.linkedTickId); })
+                    .sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
     var ec = el("div", "card rep");
     ec.appendChild(el("h3", "", "Визиты и анализы"));
     evs.forEach(function(ev){
@@ -3610,13 +3720,16 @@ function buildReportText(sc, p){
     L.push("УКУСЫ КЛЕЩА:");
     ticks.forEach(function(t){
       L.push("  обнаружен " + (t.foundAt ? whenDayText(t.foundAt) : "—") + (t.place ? ", " + t.place : ""));
-      (t.analyses || []).forEach(function(a){ L.push("    анализ: " + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? " — " + a.comment : "")); });
+      tickLabs(t).forEach(function(a){ L.push("    анализ: " + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? " — " + a.comment : "")); });
     });
     L.push("");
   }
   if(reportDraft.cats.events && events.length){
     L.push("ВИЗИТЫ И АНАЛИЗЫ:");
-    events.forEach(function(ev){ L.push("  " + eventTypeLabel(ev.type) + ": " + (ev.title || "—") + " — " + whenDayText(ev.date) + (ev.done ? " (выполнено)" : "")); });
+    events.forEach(function(ev){
+      if(ev.type === "lab" && ev.linkedTickId) return; /* показаны в «Укусы клеща» */
+      L.push("  " + eventTypeLabel(ev.type) + ": " + (ev.title || "—") + " — " + whenDayText(ev.date) + (ev.done ? " (выполнено)" : ""));
+    });
     L.push("");
   }
   if(reportDraft.questions.trim()){
