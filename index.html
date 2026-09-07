@@ -545,6 +545,7 @@
       <div class="card last" id="homeLast"></div>
       <div class="note" id="homeNext" hidden></div>
       <div class="note" id="homeReminder" hidden></div>
+      <div class="note" id="homeMed" hidden></div>
       <div class="note" id="homeNorm"></div>
     </div>
     <div class="foot">
@@ -1877,7 +1878,33 @@ function scheduleTick(){
       rec.repeated = true; changed = true;
     }
   });
+
+  /* B4: напоминание за N дней до плановой обработки/курса.
+     Ключ включает nextDate — после «дано» дата сдвигается, старый ключ перестаёт совпадать,
+     новое напоминание создаётся само. Один раз на (курс + дата), без повторов. */
+  (Array.isArray(meds) ? meds : []).forEach(function(m){
+    if(!m || m.archived || !m.nextDate) return;
+    var due = parseDate(m.nextDate);
+    if(!due) return;
+    due.setHours(0, 0, 0, 0);
+    var remindFrom = new Date(due);
+    remindFrom.setDate(remindFrom.getDate() - medRemindOffset(m));
+    var today0 = new Date(); today0.setHours(0, 0, 0, 0);
+    if(today0 < remindFrom) return;                         /* ещё рано */
+    if(today0.getTime() - due.getTime() > 2 * 86400000) return;  /* давно просрочено — не спамим */
+    var mkey = "med:" + (m.id || m.name || "?") + ":" + m.nextDate;
+    if(!map[mkey]){
+      fireNotice("Скоро обработка: " + (m.name || "препарат") + " — " + whenDayText(m.nextDate) + ".");
+      map[mkey] = { at:now }; changed = true;
+    }
+  });
+
   Object.keys(map).forEach(function(k){
+    if(k.indexOf("med:") === 0){
+      var md = parseDate(k.slice(k.lastIndexOf(":") + 1));
+      if(md && now - md.getTime() > 30 * 86400000){ delete map[k]; changed = true; }
+      return;
+    }
     var d = new Date(k.slice(0, 13) + ":00:00Z");
     if(isFinite(d) && now - d.getTime() > 3 * 86400000){ delete map[k]; changed = true; }
   });
@@ -1909,6 +1936,25 @@ function buildIcs(){
       "SUMMARY:Проверка Миши — " + t.label,
       "DESCRIPTION:Коротко отметить состояние Миши. Обычно меньше минуты.",
       "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Проверка Миши", "TRIGGER:PT0M", "END:VALARM",
+      "END:VEVENT"
+    );
+  });
+  /* B4: плановые обработки/курсы — событие на nextDate с напоминанием за offset дней */
+  (Array.isArray(meds) ? meds : []).forEach(function(m){
+    if(!m || m.archived || !m.nextDate) return;
+    var dd = parseDate(m.nextDate);
+    if(!dd) return;
+    var off = medRemindOffset(m);
+    var ymd = dd.getFullYear() + pad(dd.getMonth() + 1) + pad(dd.getDate());
+    lines.push(
+      "BEGIN:VEVENT",
+      "UID:misha-med-" + (m.id || ymd) + "-" + ymd + "@local",
+      "DTSTAMP:" + stampUTC(now),
+      "DTSTART;VALUE=DATE:" + ymd,
+      "SUMMARY:Обработка Миши: " + (m.name || "препарат"),
+      "DESCRIPTION:Плановая обработка/курс. Проверьте запас препарата заранее.",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Скоро обработка Миши",
+      "TRIGGER:" + (off > 0 ? "-P" + off + "D" : "PT0M"), "END:VALARM",
       "END:VEVENT"
     );
   });
@@ -1954,6 +2000,25 @@ function renderReminder(){
     box.appendChild(el("b", "", "Пора повторить проверку Миши. "));
     box.appendChild(document.createTextNode("Понаблюдали — отметьте, как он сейчас."));
   }
+}
+
+/* B4: на главной — тихая строка про обработки, до которых осталось ≤ offset дней */
+function renderMedReminder(){
+  var box = $("#homeMed");
+  clear(box);
+  var soon = [];
+  (Array.isArray(meds) ? meds : []).forEach(function(m){
+    if(!m || m.archived || !m.nextDate) return;
+    var n = dayDiff(m.nextDate);
+    if(n === null) return;
+    if(n <= medRemindOffset(m) && n >= -2) soon.push(m);
+  });
+  if(!soon.length){ box.hidden = true; return; }
+  soon.sort(function(a, b){ return (dayDiff(a.nextDate) || 0) - (dayDiff(b.nextDate) || 0); });
+  box.hidden = false;
+  box.appendChild(el("b", "", soon.length === 1 ? "Скоро обработка. " : "Скоро обработки. "));
+  var parts = soon.map(function(m){ return (m.name || "препарат") + " — " + whenDayText(m.nextDate); });
+  box.appendChild(document.createTextNode(parts.join("; ") + "."));
 }
 
 function renderHome(){
@@ -2018,6 +2083,7 @@ function renderHome(){
   norm.appendChild(document.createTextNode(normBits.join(", ") + ". С ней и сравниваем."));
 
   renderReminder();
+  renderMedReminder();
   renderNext();
   updateStartButton();
 }
@@ -2751,6 +2817,21 @@ function duePill(target, doneFlag){
   return span;
 }
 
+/* B4: за сколько дней до обработки напоминать. Per-курс override, иначе профиль, иначе 2. */
+function medRemindOffset(m){
+  if(m && typeof m.reminderOffsetDaysOverride === "number") return m.reminderOffsetDaysOverride;
+  if(profile && typeof profile.reminderOffsetDays === "number") return profile.reminderOffsetDays;
+  return 2;
+}
+/* дата первого напоминания (nextDate − offset) как ISO-строка, или null */
+function medRemindDateISO(m){
+  if(!m || !m.nextDate) return null;
+  var d = parseDate(m.nextDate);
+  if(!d) return null;
+  d.setDate(d.getDate() - medRemindOffset(m));
+  return isoDay(d);
+}
+
 function downscaleImage(file, maxSize, cb){
   var reader = new FileReader();
   reader.onload = function(){
@@ -3359,6 +3440,11 @@ function renderCalendar(){
     card.appendChild(el("div", "hint", whenDayText(it.date)));
 
     if(it.kind === "treat" || it.kind === "med"){
+      var rISO = it.ref ? medRemindDateISO(it.ref) : null;
+      if(rISO && medRemindOffset(it.ref) > 0){
+        var rn = dayDiff(rISO);
+        card.appendChild(el("div", "hint", rn > 0 ? ("напомним " + whenDayText(rISO)) : "напоминание уже показано"));
+      }
       var bm = el("button", "btn quiet", "Открыть лекарство");
       bm.type = "button";
       bm.addEventListener("click", function(){ show("s-meds"); openMedForm(it.ref); });
