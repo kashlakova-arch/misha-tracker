@@ -706,8 +706,20 @@
 
 var KEY_PROFILE = "misha.profile.v2";
 var KEY_ENTRIES = "misha.entries.v2";
+var KEY_MEDS = "misha.meds.v1";
+var KEY_TICKS = "misha.ticks.v1";
+var KEY_EVENTS = "misha.events.v1";
 var KEY_REMINDER = "misha.reminder";
 
+/* Состояние приложения. Заполняется асинхронно из IndexedDB (или localStorage) при старте. */
+var profile = null;
+var entries = [];
+var meds = [];
+var ticks = [];
+var events = [];
+
+/* Чтение мелких значений (напоминание, карта показанных уведомлений, заметки к отчёту)
+   остаётся на localStorage — они не в списке шага 1a и не упираются в лимит. */
 function load(key, fallback){
   try{
     var raw = localStorage.getItem(key);
@@ -716,14 +728,76 @@ function load(key, fallback){
     return (val === null || val === undefined) ? fallback : val;
   }catch(e){ return fallback; }
 }
+
+/* ─── IndexedDB: слой персистентности (шаг 1a) ────────────────────────────────
+   Пять доменных коллекций (profile/entries/meds/ticks/events) + meta переезжают
+   в IndexedDB. Формы записей — те же, что были в localStorage (храним ту же
+   JSON-строку). Ключи misha.* в localStorage НЕ трогаем — остаются бэкапом.
+   API колбэчный (ES5, без промисов). До открытия БД db === null и save/drop
+   работают через localStorage — тот же путь, что и при недоступном IndexedDB. */
+var IDB_NAME = "misha";
+var IDB_VERSION = 1;
+var IDB_STORES = ["profile", "entries", "meds", "ticks", "events", "meta"];
+var IDB_ROW = "all";              /* единственный ключ строки в каждом store — весь массив/объект */
+
+/* какой localStorage-ключ в какой object store переезжает */
+var IDB_KEY_STORE = {};
+IDB_KEY_STORE[KEY_PROFILE] = "profile";
+IDB_KEY_STORE[KEY_ENTRIES] = "entries";
+IDB_KEY_STORE[KEY_MEDS]    = "meds";
+IDB_KEY_STORE[KEY_TICKS]   = "ticks";
+IDB_KEY_STORE[KEY_EVENTS]  = "events";
+
+var db = null;
+var idbFactory = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || null;
+var idbWriteWarned = false;
+
+function idbWriteError(){
+  if(idbWriteWarned) return;
+  idbWriteWarned = true;
+  alert("Не удалось сохранить в хранилище устройства. Сделайте резервную копию: Профиль → Данные.");
+}
+function idbPutRaw(store, str){
+  if(!db) return;
+  try{
+    var tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(str, IDB_ROW);
+    tx.onerror = idbWriteError;
+    tx.onabort = idbWriteError;
+  }catch(e){ idbWriteError(); }
+}
+function idbClearRaw(store){
+  if(!db) return;
+  try{ db.transaction(store, "readwrite").objectStore(store).clear(); }catch(e){}
+}
+function idbGetRaw(store, cb){
+  try{
+    var rq = db.transaction(store, "readonly").objectStore(store).get(IDB_ROW);
+    rq.onsuccess = function(){ cb(typeof rq.result === "string" ? rq.result : null); };
+    rq.onerror = function(){ cb(null); };
+  }catch(e){ cb(null); }
+}
+
+/* save/drop: доменные ключи → IndexedDB (когда БД открыта), остальное → localStorage.
+   save остаётся синхронным по сигнатуре; запись в IDB асинхронна, реальная ошибка
+   всплывает через idbWriteError. Возврат true при db — оптимистичный. */
 function save(key, value){
-  try{ localStorage.setItem(key, JSON.stringify(value)); return true; }
+  var str;
+  try{ str = JSON.stringify(value); }catch(e){ return false; }
+  var store = IDB_KEY_STORE[key];
+  if(store && db){ idbPutRaw(store, str); return true; }
+  try{ localStorage.setItem(key, str); return true; }
   catch(e){ return false; }
 }
-function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
+function drop(key){
+  var store = IDB_KEY_STORE[key];
+  if(store && db) idbClearRaw(store);
+  try{ localStorage.removeItem(key); }catch(e){}
+}
 
-/* Перенос данных из v1 в v2 при первом открытии новой версии. v1 оставляем как есть. */
-function migrate(){
+/* Перенос данных из v1 в v2 в localStorage — как раньше. v1 оставляем как есть.
+   Выполняется до импорта в IndexedDB, чтобы v1-данные тоже переехали. */
+function migrateV1toV2(){
   try{
     if(localStorage.getItem(KEY_PROFILE) === null){
       var rawP = localStorage.getItem("misha.profile.v1");
@@ -746,7 +820,121 @@ function migrate(){
     }
   }catch(err){}
 }
-migrate();
+
+/* Старт: v1→v2 → открыть БД → одноразовый импорт из localStorage → читать в память → рендер. */
+function bootstrapStorage(){
+  migrateV1toV2();
+  if(!idbFactory){ bootFromLocalStorage(); return; }
+  var rq;
+  try{ rq = idbFactory.open(IDB_NAME, IDB_VERSION); }
+  catch(e){ bootFromLocalStorage(); return; }
+  rq.onupgradeneeded = function(){
+    var d = rq.result;
+    for(var i=0;i<IDB_STORES.length;i++){
+      if(!d.objectStoreNames.contains(IDB_STORES[i])) d.createObjectStore(IDB_STORES[i]);
+    }
+  };
+  rq.onerror = function(){ bootFromLocalStorage(); };
+  rq.onsuccess = function(){
+    db = rq.result;
+    db.onerror = function(){};  /* фоновые ошибки не роняют приложение */
+    importThenLoad();
+  };
+}
+
+function importThenLoad(){
+  idbGetRaw("meta", function(metaStr){
+    var meta = null;
+    try{ meta = metaStr ? JSON.parse(metaStr) : null; }catch(e){ meta = null; }
+    if(meta && meta.importedFromLS){ loadAllFromIDB(); return; }
+    importFromLocalStorage(function(){
+      idbPutRaw("meta", JSON.stringify({ importedFromLS:true, schema:3, at:Date.now() }));
+      loadAllFromIDB();
+    });
+  });
+}
+
+/* Копируем каждый существующий misha.*-ключ в IDB как есть (строку не пересобираем),
+   только если в IDB ещё пусто. localStorage не трогаем. Идемпотентно: гейт по
+   meta.importedFromLS, плюс проверка «в IDB пусто» на случай прерванного импорта. */
+function importFromLocalStorage(done){
+  var keys = [KEY_PROFILE, KEY_ENTRIES, KEY_MEDS, KEY_TICKS, KEY_EVENTS];
+  var pending = keys.length;
+  for(var i=0;i<keys.length;i++){
+    (function(key){
+      var store = IDB_KEY_STORE[key];
+      var raw = null;
+      try{ raw = localStorage.getItem(key); }catch(e){ raw = null; }
+      idbGetRaw(store, function(existing){
+        if(existing === null && raw !== null && raw !== undefined) idbPutRaw(store, raw);
+        if(--pending === 0) done();
+      });
+    })(keys[i]);
+  }
+}
+
+function loadAllFromIDB(){
+  var want = [
+    { store:"profile", set:function(v){ profile = v; } },
+    { store:"entries", set:function(v){ entries = v; } },
+    { store:"meds",    set:function(v){ meds = v; } },
+    { store:"ticks",   set:function(v){ ticks = v; } },
+    { store:"events",  set:function(v){ events = v; } }
+  ];
+  var pending = want.length;
+  for(var i=0;i<want.length;i++){
+    (function(w){
+      idbGetRaw(w.store, function(str){
+        var val = null;
+        if(str){ try{ val = JSON.parse(str); }catch(e){ val = null; } }
+        w.set(val);
+        if(--pending === 0) finishBoot();
+      });
+    })(want[i]);
+  }
+}
+
+/* IndexedDB недоступен (приватный режим и т.п.) — читаем и пишем через localStorage. */
+function bootFromLocalStorage(){
+  db = null;
+  profile = load(KEY_PROFILE, null);
+  entries = load(KEY_ENTRIES, []);
+  meds    = load(KEY_MEDS, []);
+  ticks   = load(KEY_TICKS, []);
+  events  = load(KEY_EVENTS, []);
+  finishBoot();
+}
+
+function finishBoot(){
+  if(profile) normalizeProfile(profile);
+  if(!Array.isArray(entries)) entries = [];
+  if(!Array.isArray(meds)) meds = [];
+  if(!Array.isArray(ticks)) ticks = [];
+  if(!Array.isArray(events)) events = [];
+  startApp();
+}
+
+function startApp(){
+  if(profile && profile.name){
+    renderHome();
+    show("s-home");
+  }else{
+    renderSetup(null);
+    show("s-setup");
+  }
+
+  /* Локальные напоминания о плановых проверках — только пока страница открыта. */
+  scheduleTick();
+  setInterval(function(){
+    scheduleTick();
+    if(document.getElementById("s-home").classList.contains("active")){ renderNext(); updateStartButton(); }
+  }, 60000);
+
+  /* PWA: сервис-воркер работает только когда страница отдаётся по http(s) */
+  if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  }
+}
 
 /* ══════════════════ Профиль ══════════════════ */
 
@@ -773,20 +961,8 @@ function normalizeProfile(p){
   return p;
 }
 
-var KEY_MEDS = "misha.meds.v1";
-var KEY_TICKS = "misha.ticks.v1";
-var KEY_EVENTS = "misha.events.v1";
-
-var profile = load(KEY_PROFILE, null);
-if(profile) normalizeProfile(profile);
-var entries = load(KEY_ENTRIES, []);
-if(!Array.isArray(entries)) entries = [];
-var meds = load(KEY_MEDS, []);
-if(!Array.isArray(meds)) meds = [];
-var ticks = load(KEY_TICKS, []);
-if(!Array.isArray(ticks)) ticks = [];
-var events = load(KEY_EVENTS, []);
-if(!Array.isArray(events)) events = [];
+/* profile / entries / meds / ticks / events объявлены в разделе «Хранилище» и
+   заполняются из IndexedDB в bootstrapStorage() (вызов — в самом низу скрипта). */
 
 /* ══════════════════ Справочники и правила ══════════════════ */
 
@@ -3385,27 +3561,10 @@ $("#reportBack").addEventListener("click", function(){ renderDiary(); show("s-di
 
 /* ══════════════════ Старт ══════════════════ */
 
-if(profile && profile.name){
-  renderHome();
-  show("s-home");
-}else{
-  renderSetup(null);
-  show("s-setup");
-}
-
-/* Локальные напоминания о плановых проверках — только пока страница открыта. */
-scheduleTick();
-setInterval(function(){
-  scheduleTick();
-  if(document.getElementById("s-home").classList.contains("active")){ renderNext(); updateStartButton(); }
-}, 60000);
-
-/* PWA: сервис-воркер работает только когда страница отдаётся по http(s) */
-if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
-  window.addEventListener("load", function(){
-    navigator.serviceWorker.register("sw.js").catch(function(){});
-  });
-}
+/* Открыть IndexedDB → одноразовый импорт из localStorage → прочитать в память →
+   startApp() (первый рендер + планировщик + сервис-воркер). Определения — в разделе
+   «Хранилище». */
+bootstrapStorage();
 
 })();
 </script>
