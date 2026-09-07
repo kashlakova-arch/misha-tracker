@@ -1035,7 +1035,10 @@ function normalizeEvents(list){
     }else if(ev.type === "lab"){
       if(ev.labType === undefined){ ev.labType = (ev.title || ""); changed = true; }
       if(ev.lab === undefined){ ev.lab = ""; changed = true; }
-      if(ev.file === undefined){ ev.file = null; changed = true; }
+      /* мини-шаг: файлы результата (фото/PDF) — массив {id,name,mime,data}.
+         Прежнее поле file (одиночное, всегда было null) переезжает в files. */
+      if(ev.files === undefined){ ev.files = Array.isArray(ev.file) ? ev.file : []; changed = true; }
+      if("file" in ev){ delete ev.file; changed = true; }
       if(ev.result === undefined){ ev.result = ""; changed = true; }
       if(ev.vetComment === undefined){ ev.vetComment = ""; changed = true; }
       if(ev.linkedVisitId === undefined){ ev.linkedVisitId = null; changed = true; }
@@ -1076,7 +1079,7 @@ function migrateTickAnalyses(ticksList, eventsList){
         lab: a.lab || "",
         result: a.result || "",
         vetComment: a.comment || "",
-        file: null,
+        files: Array.isArray(a.files) ? a.files : [],
         done: true,
         notes: "",
         linkedVisitId: null,
@@ -2945,6 +2948,7 @@ function tickLabs(t){
         type: ev.labType || ev.title || "",
         lab: ev.lab || "", result: ev.result || "",
         comment: (ev.vetComment != null ? ev.vetComment : "") || "",
+        files: Array.isArray(ev.files) ? ev.files : [],
         _src: "event", _ref: ev
       });
       if(ev.id) seen[ev.id] = true;
@@ -2957,6 +2961,7 @@ function tickLabs(t){
     out.push({
       id: a.id, date: a.date || "", type: a.type || "",
       lab: a.lab || "", result: a.result || "", comment: a.comment || "",
+      files: Array.isArray(a.files) ? a.files : [],
       _src: "inline", _ref: a
     });
   }
@@ -3057,7 +3062,9 @@ function openTickForm(existing){
     clear(anList);
     tickLabs(t).forEach(function(a){
       var row = el("div", "rowline");
-      row.appendChild(el("span", "hint grow", [a.date && whenDayText(a.date), a.type, a.lab, a.result].filter(Boolean).join(" · ") || "анализ"));
+      var rowParts = [a.date && whenDayText(a.date), a.type, a.lab, a.result].filter(Boolean);
+      if(a.files && a.files.length) rowParts.push("файлов: " + a.files.length);
+      row.appendChild(el("span", "hint grow", rowParts.join(" · ") || "анализ"));
       var ed = el("button", "btn quiet", "Изм.");
       ed.type = "button";
       ed.addEventListener("click", function(){ commit(); openAnalysisForm(t, a, function(){ openTickForm(t); }); });
@@ -3144,6 +3151,63 @@ function openAnalysisForm(tick, a, back){
   var fResult = fieldInput("Результат", a.result, {textarea:true});
   var fComment = fieldInput("Комментарий врача", a.comment, {textarea:true});
   [fDate, fType, fLab, fResult, fComment].forEach(function(f){ body.appendChild(f); });
+
+  /* мини-шаг: файлы результата (фото/PDF). Живут в ref.files и сохраняются сразу,
+     как медиа дневника, — большой файл не теряется при уходе с формы. */
+  ref.files = Array.isArray(ref.files) ? ref.files : [];
+  function persistAnalysis(){
+    if(isEvent) return save(KEY_EVENTS, events);
+    tick._analysesMigrated = false;
+    return save(KEY_TICKS, ticks);
+  }
+  var fileWrap = el("div", "card field");
+  fileWrap.appendChild(el("label", "", "Файлы результата"));
+  fileWrap.appendChild(el("div", "note", "Фото бланка или PDF. Фото сжимается, PDF сохраняется как есть."));
+  var fileList = el("div", "field");
+  fileWrap.appendChild(fileList);
+  var fileInp = el("input"); fileInp.type = "file"; fileInp.accept = "image/*,application/pdf"; fileInp.hidden = true;
+  function isPdfFile(f){ return (f.type || "").indexOf("pdf") >= 0 || /\.pdf$/i.test(f.name || ""); }
+  function addAnalysisFile(name, mime, url){
+    if(url && url.length > 12000000){ alert("Файл слишком большой (больше ~9 МБ). Сожмите PDF или сфотографируйте бланк."); return; }
+    var item = { id: makeId(), name: name || (mime.indexOf("pdf") >= 0 ? "документ.pdf" : "фото.jpg"), mime: mime, data: url };
+    ref.files.push(item);
+    if(!persistAnalysis()){ ref.files.pop(); alert("Не удалось сохранить файл — возможно, не хватает места."); return; }
+    drawAnalysisFiles();
+  }
+  fileInp.addEventListener("change", function(){
+    var f = fileInp.files && fileInp.files[0]; fileInp.value = "";
+    if(!f) return;
+    if(isPdfFile(f)){
+      var r = new FileReader();
+      r.onload = function(){ addAnalysisFile(f.name, f.type || "application/pdf", r.result); };
+      r.onerror = function(){ alert("Не удалось прочитать файл."); };
+      r.readAsDataURL(f);
+    }else{
+      downscaleImage(f, 1200, function(url){ addAnalysisFile(f.name, "image/jpeg", url); });
+    }
+  });
+  function drawAnalysisFiles(){
+    clear(fileList);
+    if(!ref.files.length){ fileList.appendChild(el("div", "hint", "файлов пока нет")); return; }
+    ref.files.forEach(function(fl, idx){
+      var row = el("div", "rowline");
+      var link = el("a", "hint grow", (fl.mime && fl.mime.indexOf("pdf") >= 0 ? "PDF · " : "фото · ") + (fl.name || "файл"));
+      link.href = fl.data; link.target = "_blank"; link.rel = "noopener";
+      row.appendChild(link);
+      var rmf = el("button", "btn quiet", "Убрать");
+      rmf.type = "button";
+      rmf.addEventListener("click", function(){ ref.files.splice(idx, 1); persistAnalysis(); drawAnalysisFiles(); });
+      row.appendChild(rmf);
+      fileList.appendChild(row);
+    });
+  }
+  drawAnalysisFiles();
+  var addFileBtn = el("button", "btn soft", "＋ Добавить файл");
+  addFileBtn.type = "button";
+  addFileBtn.addEventListener("click", function(){ fileInp.click(); });
+  fileWrap.appendChild(addFileBtn);
+  fileWrap.appendChild(fileInp);
+  body.appendChild(fileWrap);
 
   var saveBtn = el("button", "btn primary", "Сохранить анализ");
   saveBtn.type = "button";
@@ -3624,7 +3688,7 @@ function renderReportView(){
       var day = tickControlDay(t);
       tc.appendChild(el("div", "hint", (day >= 1 && day <= TICK_CONTROL_DAYS) ? ("контроль: день " + day + " из " + TICK_CONTROL_DAYS) : "контроль завершён"));
       tickLabs(t).forEach(function(a){
-        tc.appendChild(el("div", "hint", "анализ " + (a.date ? whenDayText(a.date) + " " : "") + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? (" — " + a.comment) : "")));
+        tc.appendChild(el("div", "hint", "анализ " + (a.date ? whenDayText(a.date) + " " : "") + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? (" — " + a.comment) : "") + (a.files && a.files.length ? (" · файлов: " + a.files.length) : "")));
       });
     });
     body.appendChild(tc);
@@ -3647,6 +3711,9 @@ function renderReportView(){
     var photos = [];
     sc.checks.concat(sc.walks).forEach(function(e){ (e.media || []).forEach(function(mm){ photos.push(mm.data); }); });
     ticks.forEach(function(t){ [t.photoTick, t.photoBite].forEach(function(x){ if(x) photos.push(x); }); });
+    ticks.forEach(function(t){ tickLabs(t).forEach(function(a){ (a.files || []).forEach(function(fl){
+      if(fl && fl.data && fl.mime && fl.mime.indexOf("image/") === 0) photos.push(fl.data);
+    }); }); });
     if(photos.length){
       var pc = el("div", "card rep");
       pc.appendChild(el("h3", "", "Фотографии"));
@@ -3720,7 +3787,7 @@ function buildReportText(sc, p){
     L.push("УКУСЫ КЛЕЩА:");
     ticks.forEach(function(t){
       L.push("  обнаружен " + (t.foundAt ? whenDayText(t.foundAt) : "—") + (t.place ? ", " + t.place : ""));
-      tickLabs(t).forEach(function(a){ L.push("    анализ: " + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? " — " + a.comment : "")); });
+      tickLabs(t).forEach(function(a){ L.push("    анализ: " + (a.type || "") + (a.result ? ": " + a.result : "") + (a.comment ? " — " + a.comment : "") + (a.files && a.files.length ? (" (файлов: " + a.files.length + ")") : "")); });
     });
     L.push("");
   }
