@@ -4594,11 +4594,12 @@ function qolSorted(){
     return ta - tb;
   });
 }
+var QOL_ITEM_LOW = 5;   /* балл <= 5 по любому пункту — повод обсудить с врачом (5 — пограничное «приемлемо») */
 function qolLow(entry){
   if(!entry) return false;
   if((entry.total || 0) < QOL_OK_TOTAL) return true;
   var s = entry.scores || {};
-  return QOL_ITEMS.some(function(it){ return typeof s[it.k] === "number" && s[it.k] < 5; });
+  return QOL_ITEMS.some(function(it){ return typeof s[it.k] === "number" && s[it.k] <= QOL_ITEM_LOW; });
 }
 /* нет оценки за последние 7 дней */
 function qolDueThisWeek(){
@@ -4676,7 +4677,7 @@ function openQolForm(existing){
   function paintTotal(){
     var t = 0;
     QOL_ITEMS.forEach(function(it){ t += scores[it.k]; });
-    var low = t < QOL_OK_TOTAL || QOL_ITEMS.some(function(it){ return scores[it.k] < 5; });
+    var low = t < QOL_OK_TOTAL || QOL_ITEMS.some(function(it){ return scores[it.k] <= QOL_ITEM_LOW; });
     totalLine.textContent = "Сумма: " + t + " из " + QOL_MAX + (low ? " · стоит обсудить с врачом" : " · в целом приемлемо");
     return t;
   }
