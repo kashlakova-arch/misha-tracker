@@ -709,6 +709,8 @@ var KEY_ENTRIES = "misha.entries.v2";
 var KEY_MEDS = "misha.meds.v1";
 var KEY_TICKS = "misha.ticks.v1";
 var KEY_EVENTS = "misha.events.v1";
+var KEY_WEIGHTS = "misha.weights.v1";   /* шаг 1b: пустой стор, наполнится в A2 */
+var KEY_QOL = "misha.qol.v1";           /* шаг 1b: пустой стор, наполнится в A8 */
 var KEY_REMINDER = "misha.reminder";
 
 /* Состояние приложения. Заполняется асинхронно из IndexedDB (или localStorage) при старте. */
@@ -717,6 +719,8 @@ var entries = [];
 var meds = [];
 var ticks = [];
 var events = [];
+var weights = [];
+var qol = [];
 
 /* Чтение мелких значений (напоминание, карта показанных уведомлений, заметки к отчёту)
    остаётся на localStorage — они не в списке шага 1a и не упираются в лимит. */
@@ -729,15 +733,16 @@ function load(key, fallback){
   }catch(e){ return fallback; }
 }
 
-/* ─── IndexedDB: слой персистентности (шаг 1a) ────────────────────────────────
-   Пять доменных коллекций (profile/entries/meds/ticks/events) + meta переезжают
-   в IndexedDB. Формы записей — те же, что были в localStorage (храним ту же
+/* ─── IndexedDB: слой персистентности (шаги 1a–1b) ────────────────────────────
+   Доменные коллекции (profile/entries/meds/ticks/events/weights/qol) + meta
+   живут в IndexedDB. Формы записей — те же, что были в localStorage (храним ту же
    JSON-строку). Ключи misha.* в localStorage НЕ трогаем — остаются бэкапом.
    API колбэчный (ES5, без промисов). До открытия БД db === null и save/drop
-   работают через localStorage — тот же путь, что и при недоступном IndexedDB. */
+   работают через localStorage — тот же путь, что и при недоступном IndexedDB.
+   Шаг 1b: version 1→2 добавляет пустые store-ы weights/qol через onupgradeneeded. */
 var IDB_NAME = "misha";
-var IDB_VERSION = 1;
-var IDB_STORES = ["profile", "entries", "meds", "ticks", "events", "meta"];
+var IDB_VERSION = 2;
+var IDB_STORES = ["profile", "entries", "meds", "ticks", "events", "weights", "qol", "meta"];
 var IDB_ROW = "all";              /* единственный ключ строки в каждом store — весь массив/объект */
 
 /* какой localStorage-ключ в какой object store переезжает */
@@ -747,6 +752,8 @@ IDB_KEY_STORE[KEY_ENTRIES] = "entries";
 IDB_KEY_STORE[KEY_MEDS]    = "meds";
 IDB_KEY_STORE[KEY_TICKS]   = "ticks";
 IDB_KEY_STORE[KEY_EVENTS]  = "events";
+IDB_KEY_STORE[KEY_WEIGHTS] = "weights";
+IDB_KEY_STORE[KEY_QOL]     = "qol";
 
 var db = null;
 var idbFactory = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || null;
@@ -879,7 +886,9 @@ function loadAllFromIDB(){
     { store:"entries", set:function(v){ entries = v; } },
     { store:"meds",    set:function(v){ meds = v; } },
     { store:"ticks",   set:function(v){ ticks = v; } },
-    { store:"events",  set:function(v){ events = v; } }
+    { store:"events",  set:function(v){ events = v; } },
+    { store:"weights", set:function(v){ weights = v; } },
+    { store:"qol",     set:function(v){ qol = v; } }
   ];
   var pending = want.length;
   for(var i=0;i<want.length;i++){
@@ -902,15 +911,28 @@ function bootFromLocalStorage(){
   meds    = load(KEY_MEDS, []);
   ticks   = load(KEY_TICKS, []);
   events  = load(KEY_EVENTS, []);
+  weights = load(KEY_WEIGHTS, []);
+  qol     = load(KEY_QOL, []);
   finishBoot();
 }
 
 function finishBoot(){
-  if(profile) normalizeProfile(profile);
   if(!Array.isArray(entries)) entries = [];
   if(!Array.isArray(meds)) meds = [];
   if(!Array.isArray(ticks)) ticks = [];
   if(!Array.isArray(events)) events = [];
+  if(!Array.isArray(weights)) weights = [];
+  if(!Array.isArray(qol)) qol = [];
+  /* Шаг 1b: дозаполнить новые поля схемы. Все guard'ы — `x.foo === undefined`,
+     повторный прогон ничего не меняет. Что дозаполнили — один раз сохраняем,
+     чтобы IndexedDB и память совпали (на последующих стартах save не вызывается). */
+  var profileWasThin = profile && profile.reminderOffsetDays === undefined;
+  if(profile) normalizeProfile(profile);
+  var medsChanged = normalizeMeds(meds);
+  var eventsChanged = normalizeEvents(events);
+  if(profileWasThin && profile) save(KEY_PROFILE, profile);
+  if(medsChanged) save(KEY_MEDS, meds);
+  if(eventsChanged) save(KEY_EVENTS, events);
   startApp();
 }
 
@@ -947,7 +969,9 @@ var PROFILE_DEFAULTS = {
   stoolFreq:"", giNotes:"", tempNorm:null,
   checkAM:"09:00", checkPM:"20:00",
   clinicName:"", clinicPhone:"", clinicAddr:"",
-  clinic24Name:"", clinic24Phone:"", clinic24Addr:""
+  clinic24Name:"", clinic24Phone:"", clinic24Addr:"",
+  /* шаг 1b: конфиг, пока без UI (появится в B4 / A6 / A8) */
+  reminderOffsetDays:2, trackSRR:false, srrNorm:null, trackQoL:false
 };
 
 function normalizeProfile(p){
@@ -959,6 +983,62 @@ function normalizeProfile(p){
   if(typeof p.tempNorm !== "number") p.tempNorm = null;
   p.schema = 3;
   return p;
+}
+
+/* Шаг 1b: дозаполнение новых полей meds[]/log[] (B1, B4). Возвращает true, если
+   что-то изменилось — тогда вызывающий сохранит стор один раз. Идемпотентно. */
+function normalizeMeds(list){
+  if(!Array.isArray(list)) return false;
+  var changed = false;
+  for(var i = 0; i < list.length; i++){
+    var m = list[i];
+    if(!m || typeof m !== "object") continue;
+    if(m.oneOff === undefined){ m.oneOff = false; changed = true; }
+    if(m.startDate === undefined){ m.startDate = null; changed = true; }
+    if(m.intervalDays === undefined){ m.intervalDays = null; changed = true; }
+    if(m.reminderOffsetDaysOverride === undefined){ m.reminderOffsetDaysOverride = null; changed = true; }
+    if(Array.isArray(m.log)){
+      for(var j = 0; j < m.log.length; j++){
+        var lg = m.log[j];
+        if(!lg || typeof lg !== "object") continue;
+        if(lg.date === undefined){ lg.date = isoDay(lg.ts ? new Date(lg.ts) : new Date()); changed = true; }
+        if(lg.isBackdated === undefined){ lg.isBackdated = false; changed = true; }
+        if(lg.reaction === undefined){ lg.reaction = null; changed = true; }
+        if(lg.note === undefined){ lg.note = null; changed = true; }
+      }
+    }
+  }
+  return changed;
+}
+
+/* Шаг 1b: дозаполнение rich-полей events[] по типу (B2 visit, B3 lab). */
+function normalizeEvents(list){
+  if(!Array.isArray(list)) return false;
+  var changed = false;
+  for(var i = 0; i < list.length; i++){
+    var ev = list[i];
+    if(!ev || typeof ev !== "object") continue;
+    if(ev.enteredAt === undefined){ ev.enteredAt = (ev.createdAt != null ? ev.createdAt : null); changed = true; }
+    if(ev.type === "visit"){
+      if(ev.clinic === undefined){ ev.clinic = ""; changed = true; }
+      if(ev.vetName === undefined){ ev.vetName = ""; changed = true; }
+      if(ev.reason === undefined){ ev.reason = ""; changed = true; }
+      if(ev.recommendations === undefined){ ev.recommendations = ""; changed = true; }
+      if(ev.prescribedMedIds === undefined){ ev.prescribedMedIds = []; changed = true; }
+      if(ev.media === undefined){ ev.media = []; changed = true; }
+      if(ev.followUpDate === undefined){ ev.followUpDate = null; changed = true; }
+      if(ev.linkedEntryId === undefined){ ev.linkedEntryId = null; changed = true; }
+    }else if(ev.type === "lab"){
+      if(ev.labType === undefined){ ev.labType = (ev.title || ""); changed = true; }
+      if(ev.lab === undefined){ ev.lab = ""; changed = true; }
+      if(ev.file === undefined){ ev.file = null; changed = true; }
+      if(ev.result === undefined){ ev.result = ""; changed = true; }
+      if(ev.vetComment === undefined){ ev.vetComment = ""; changed = true; }
+      if(ev.linkedVisitId === undefined){ ev.linkedVisitId = null; changed = true; }
+      if(ev.linkedTickId === undefined){ ev.linkedTickId = null; changed = true; }
+    }
+  }
+  return changed;
 }
 
 /* profile / entries / meds / ticks / events объявлены в разделе «Хранилище» и
@@ -1515,7 +1595,8 @@ $("#exportBtn").addEventListener("click", function(){
     app: "misha-health-tracker", schema: 3,
     exportedAt: new Date().toISOString(),
     profile: profile, entries: entries,
-    meds: meds, ticks: ticks, events: events
+    meds: meds, ticks: ticks, events: events,
+    weights: weights, qol: qol
   };
   var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
   var url = URL.createObjectURL(blob);
@@ -1548,11 +1629,17 @@ $("#importInput").addEventListener("change", function(){
     meds = Array.isArray(data.meds) ? data.meds : [];
     ticks = Array.isArray(data.ticks) ? data.ticks : [];
     events = Array.isArray(data.events) ? data.events : [];
+    weights = Array.isArray(data.weights) ? data.weights : [];
+    qol = Array.isArray(data.qol) ? data.qol : [];
+    normalizeMeds(meds);
+    normalizeEvents(events);
     save(KEY_PROFILE, profile);
     save(KEY_ENTRIES, entries);
     save(KEY_MEDS, meds);
     save(KEY_TICKS, ticks);
     save(KEY_EVENTS, events);
+    save(KEY_WEIGHTS, weights);
+    save(KEY_QOL, qol);
     renderSetup(profile);
     renderHome();
     show("s-home");
@@ -1566,7 +1653,8 @@ $("#wipeBtn").addEventListener("click", function(){
   if(!confirm("Точно удалить всё?")) return;
   drop(KEY_PROFILE); drop(KEY_ENTRIES); drop(KEY_REMINDER); drop(KEY_NOTIFIED);
   drop(KEY_MEDS); drop(KEY_TICKS); drop(KEY_EVENTS); drop(KEY_REPORTNOTES);
-  meds = []; ticks = []; events = [];
+  drop(KEY_WEIGHTS); drop(KEY_QOL);
+  meds = []; ticks = []; events = []; weights = []; qol = [];
   profile = null;
   entries = [];
   renderSetup(null);
