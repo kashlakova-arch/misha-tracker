@@ -2907,6 +2907,11 @@ function renderMeds(){
   add.type = "button";
   add.addEventListener("click", function(){ openMedForm(null); });
   foot.appendChild(add);
+
+  var back = el("button", "btn soft", "＋ Запись задним числом");
+  back.type = "button";
+  back.addEventListener("click", function(){ openBackdateForm(); });
+  foot.appendChild(back);
 }
 
 function medCard(m){
@@ -2930,7 +2935,12 @@ function medCard(m){
   }
 
   var lastLog = (m.log && m.log[0]) || null;
-  if(lastLog) card.appendChild(el("div", "hint", "Последняя отметка: " + medLogLabel(lastLog.status).toLowerCase() + " — " + whenText(lastLog.ts)));
+  if(lastLog){
+    var when = lastLog.date ? whenDayText(lastLog.date) : whenText(lastLog.ts);
+    var suffix = lastLog.isBackdated ? " · внесено задним числом" : "";
+    var prefix = m.oneOff ? "Разовая обработка: " : "Последняя отметка: ";
+    card.appendChild(el("div", "hint", prefix + medLogLabel(lastLog.status).toLowerCase() + " — " + when + suffix));
+  }
 
   if(!m.archived){
     var act = el("div", "miniact");
@@ -2997,7 +3007,8 @@ function openMedForm(existing){
     var logWrap = el("div", "card field");
     logWrap.appendChild(el("label", "", "Отметки"));
     m.log.slice(0, 20).forEach(function(x){
-      logWrap.appendChild(el("div", "hint", medLogLabel(x.status) + " — " + whenText(x.ts)));
+      var w = x.date ? whenDayText(x.date) : whenText(x.ts);
+      logWrap.appendChild(el("div", "hint", medLogLabel(x.status) + " — " + w + (x.isBackdated ? " · задним числом" : "") + (x.note ? (" — " + x.note) : "")));
     });
     body.appendChild(logWrap);
   }
@@ -3040,6 +3051,129 @@ function openMedForm(existing){
     });
     foot.appendChild(del);
   }
+
+  var cancel = el("button", "btn quiet", "Отмена");
+  cancel.type = "button";
+  cancel.addEventListener("click", renderMeds);
+  foot.appendChild(cancel);
+}
+
+/* B1: внести обработку/приём, сделанные раньше и не заведённые в приложении.
+   Разовая обработка → meds[] {oneOff:true, kind:"treatment", nextDate:null, archived:true};
+   курс задним числом → обычный meds[] со startDate = дата; nextDate считается от неё.
+   isBackdated: |дата − сегодня| >= 2 дня. Напоминаний разовая запись не создаёт. */
+function openBackdateForm(){
+  var body = $("#medsBody"), foot = $("#medsFoot");
+  clear(body); clear(foot);
+  $("#medsSub").textContent = "запись задним числом";
+
+  body.appendChild(el("div", "note", "Здесь можно внести обработку или приём лекарства, сделанные раньше. На статус проверок это не влияет — только история."));
+
+  var fDate = fieldInput("Дата обработки / приёма", isoDay(new Date()), {type:"date"});
+  body.appendChild(fDate);
+
+  var activeMeds = meds.filter(function(m){ return !m.archived; });
+  var modes = [{v:"oneoff", label:"Разовая обработка"}, {v:"newcourse", label:"Завести курс"}];
+  if(activeMeds.length) modes.unshift({v:"existing", label:"В существующий курс"});
+  var mode = modes[0].v;
+
+  var STATUSES = [{v:"given", label:"Дано"}, {v:"skipped", label:"Пропущено"}, {v:"cancelled", label:"Отменено врачом"}];
+  var status = "given";
+
+  var sub = el("div", "");
+  body.appendChild(segControl(modes, mode, function(v){ mode = v; drawSub(); }));
+  body.appendChild(sub);
+
+  var fSelect, fName, fSubst, fInterval, fDose, fReaction, fNote;
+
+  function drawSub(){
+    clear(sub);
+    if(mode === "existing"){
+      var wrap = el("div", "field");
+      wrap.appendChild(el("label", "", "Курс"));
+      fSelect = el("select");
+      activeMeds.forEach(function(m){
+        var o = el("option", "", (m.name || "препарат") + (m.kind === "treatment" ? " (обработка)" : ""));
+        o.value = m.id;
+        fSelect.appendChild(o);
+      });
+      wrap.appendChild(fSelect);
+      sub.appendChild(wrap);
+      sub.appendChild(el("label", "", "Отметка"));
+      sub.appendChild(segControl(STATUSES, status, function(v){ status = v; }));
+    }else{
+      status = "given";
+      fName = fieldInput("Название", "", {placeholder: mode === "oneoff" ? "Бравекто" : "название курса"});
+      fSubst = fieldInput("Действующее вещество", "", {placeholder:"необязательно"});
+      sub.appendChild(fName); sub.appendChild(fSubst);
+      if(mode === "newcourse"){
+        fInterval = fieldInput("Интервал, дней", "", {type:"number", inputMode:"numeric", placeholder:"напр. 30 — тогда следующая дата считается автоматически"});
+        sub.appendChild(fInterval);
+      }
+    }
+    fDose = fieldInput("Доза", "", {placeholder:"необязательно"});
+    fReaction = fieldInput("Реакция, если была", "", {textarea:true});
+    fNote = fieldInput("Заметка", "", {textarea:true});
+    sub.appendChild(fDose); sub.appendChild(fReaction); sub.appendChild(fNote);
+  }
+  drawSub();
+
+  var saveBtn = el("button", "btn primary", "Сохранить запись");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    var dateStr = fDate._input.value;
+    if(!dateStr){ alert("Укажите дату."); return; }
+    var dd = dayDiff(dateStr);
+    var back = (dd !== null) && (Math.abs(dd) >= 2);
+    var logItem = {
+      ts: Date.now(), date: dateStr, status: (mode === "existing" ? status : "given"),
+      isBackdated: back,
+      reaction: (fReaction._input.value.trim() || null),
+      note: (fNote._input.value.trim() || null)
+    };
+    var dose = fDose._input.value.trim();
+    if(dose) logItem.dose = dose;
+
+    if(mode === "existing"){
+      var id = fSelect.value;
+      var tgt = null;
+      for(var i = 0; i < meds.length; i++) if(meds[i].id === id){ tgt = meds[i]; break; }
+      if(!tgt){ alert("Курс не найден."); return; }
+      tgt.log = tgt.log || [];
+      tgt.log.unshift(logItem);
+      if(logItem.status === "given" && typeof tgt.intervalDays === "number" && tgt.intervalDays > 0){
+        var nd = parseDate(dateStr);
+        if(nd){ nd.setDate(nd.getDate() + tgt.intervalDays); tgt.nextDate = isoDay(nd); }
+      }
+    }else if(mode === "oneoff"){
+      meds.unshift({
+        id: makeId(), kind: "treatment", oneOff: true, archived: true, nextDate: null,
+        name: (fName._input.value.trim() || "Разовая обработка"),
+        substance: fSubst._input.value.trim(),
+        startDate: null, intervalDays: null, reminderOffsetDaysOverride: null,
+        createdAt: Date.now(), log: [logItem]
+      });
+    }else{
+      var iv = parseInt(fInterval._input.value, 10);
+      var m3 = {
+        id: makeId(), kind: "treatment", oneOff: false, archived: false, nextDate: "",
+        name: (fName._input.value.trim() || "Курс"),
+        substance: fSubst._input.value.trim(),
+        startDate: dateStr,
+        intervalDays: (isFinite(iv) && iv > 0) ? iv : null,
+        reminderOffsetDaysOverride: null,
+        createdAt: Date.now(), log: [logItem]
+      };
+      if(m3.intervalDays){
+        var nd3 = parseDate(dateStr);
+        if(nd3){ nd3.setDate(nd3.getDate() + m3.intervalDays); m3.nextDate = isoDay(nd3); }
+      }
+      meds.unshift(m3);
+    }
+    if(!save(KEY_MEDS, meds)) alert("Не удалось сохранить.");
+    renderMeds();
+  });
+  foot.appendChild(saveBtn);
 
   var cancel = el("button", "btn quiet", "Отмена");
   cancel.type = "button";
@@ -3817,13 +3951,18 @@ function renderReportView(){
     meds.forEach(function(m){
       mc.appendChild(el("div", "", (m.name || "—") + (m.substance ? " (" + m.substance + ")" : "") + " " +
         [m.dose, m.unit].filter(Boolean).join(" ") + (m.timing ? ", " + m.timing : "") + (m.archived ? " — завершено" : "")));
-      var recent = (m.log || []).filter(function(x){ return x.ts >= sc.since; });
+      var recent = (m.log || []).filter(function(x){
+        var t = x.date ? ((parseDate(x.date) || new Date(x.ts)).getTime()) : x.ts;
+        return t >= sc.since;
+      });
       if(recent.length){
         var g = recent.filter(function(x){ return x.status === "given"; }).length;
         var s = recent.filter(function(x){ return x.status === "skipped"; }).length;
-        mc.appendChild(el("div", "hint", "за период: дано " + g + ", пропущено " + s));
+        var bd = recent.filter(function(x){ return x.isBackdated; }).length;
+        mc.appendChild(el("div", "hint", "за период: дано " + g + ", пропущено " + s + (bd ? (" (внесено задним числом: " + bd + ")") : "")));
       }
-      if(m.kind === "treatment" && m.nextDate) mc.appendChild(el("div", "hint", "следующая обработка: " + whenDayText(m.nextDate)));
+      if(m.oneOff) mc.appendChild(el("div", "hint", "разовая обработка"));
+      else if(m.kind === "treatment" && m.nextDate) mc.appendChild(el("div", "hint", "следующая обработка: " + whenDayText(m.nextDate)));
     });
     body.appendChild(mc);
   }
@@ -3928,7 +4067,11 @@ function buildReportText(sc, p){
   }
   if(reportDraft.cats.meds && meds.length){
     L.push("ЛЕКАРСТВА И ОБРАБОТКИ:");
-    meds.forEach(function(m){ L.push("  " + (m.name || "—") + " " + [m.dose, m.unit].filter(Boolean).join(" ") + (m.timing ? ", " + m.timing : "") + (m.archived ? " (завершено)" : "")); });
+    meds.forEach(function(m){
+      L.push("  " + (m.name || "—") + " " + [m.dose, m.unit].filter(Boolean).join(" ") + (m.timing ? ", " + m.timing : "") + (m.oneOff ? " (разовая обработка)" : (m.archived ? " (завершено)" : "")));
+      var lg = (m.log || [])[0];
+      if(m.oneOff && lg) L.push("    " + medLogLabel(lg.status).toLowerCase() + " — " + (lg.date ? whenDayText(lg.date) : whenText(lg.ts)) + (lg.isBackdated ? " (задним числом)" : "") + (lg.note ? (" — " + lg.note) : ""));
+    });
     L.push("");
   }
   if(reportDraft.cats.ticks && ticks.length){
