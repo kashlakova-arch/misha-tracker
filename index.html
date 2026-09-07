@@ -480,6 +480,17 @@
       </div>
 
       <div class="card field">
+        <label>Дыхание в покое</label>
+        <div class="hint">Необязательно. Если включить, в проверке появится счётчик вдохов во сне или покое — объективный показатель. У здоровой собаки обычно не больше 25–30 в минуту; устойчиво выше — повод к врачу.</div>
+        <button class="btn soft" id="srrToggle" type="button">Считать дыхание в проверке</button>
+        <div class="field" id="srrNormField" hidden>
+          <label for="srrNorm">Его обычная частота, вдохов/мин</label>
+          <input type="text" id="srrNorm" inputmode="numeric" placeholder="напр. 20" autocomplete="off">
+          <div class="hint">Если однажды спокойно посчитали. Можно оставить пустым.</div>
+        </div>
+      </div>
+
+      <div class="card field">
         <label>Расписание проверок</label>
         <div class="hint">Две спокойные проверки в день. Пропуск — без последствий.</div>
         <div class="grid2">
@@ -1050,7 +1061,7 @@ var PROFILE_DEFAULTS = {
   checkAM:"09:00", checkPM:"20:00",
   clinicName:"", clinicPhone:"", clinicAddr:"",
   clinic24Name:"", clinic24Phone:"", clinic24Addr:"",
-  /* шаг 1b: конфиг, пока без UI (появится в B4 / A6 / A8) */
+  /* конфиг: reminderOffsetDays (B4), trackSRR/srrNorm (A6, UI в профиле), trackQoL (A8, пока без UI) */
   reminderOffsetDays:2, trackSRR:false, srrNorm:null, trackQoL:false
 };
 
@@ -1181,11 +1192,12 @@ function migrateTickAnalyses(ticksList, eventsList){
 /* Продуктовые пороги первой версии. Меняются только с подтверждением ветеринара.
    При изменении любого порога — поднять version: каждая запись хранит версию, по которой оценена. */
 var RULES = {
-  version: "2026-09-06",
+  version: "2026-09-07",
   temp: { yellowMin: 39.4, redMin: 40.0 }, /* °C: жёлтый при плохом самочувствии / красный с признаками перегрева */
   fastHours: 24,                           /* «не ест N часов» → жёлтый */
   moderateForYellow: 2,                    /* столько небольших отличий вместе поднимают статус до жёлтого */
-  keyUnknownForNeutral: 2                  /* столько непроверенных ключевых показателей → «проверка неполная» */
+  keyUnknownForNeutral: 2,                 /* столько непроверенных ключевых показателей → «проверка неполная» */
+  srr: { normalMax: 25, concernMin: 30 }   /* A6: дыхание в покое, вдохов/мин — норма ≤25, тревожно ≥30 */
 };
 
 var PAWS = [
@@ -1371,6 +1383,8 @@ function evaluate(a, p){
   if(a.gums === "pale")         red.push("Очень бледные дёсны");
   if(a.gums === "yellow")       red.push("Желтоватые дёсны");
   if(a.breathing === "labored") red.push("Затруднённое дыхание");
+  if(typeof a.srr === "number" && a.srr >= RULES.srr.concernMin)
+    red.push("Дыхание в покое " + a.srr + " вдох./мин — очень частое");
   if(a.collapse === "weak")     red.push("Резкая слабость и шаткость");
   if(a.collapse === "faint")    red.push("Была потеря сознания");
   if(a.vomit === "blood")       red.push("Рвота с кровью");
@@ -1397,12 +1411,15 @@ function evaluate(a, p){
     yellow.push("Температура " + temp.toFixed(1) + " °C при плохом самочувствии");
 
   /* — Небольшие отличия: одно — наблюдаем, два и более — жёлтый — */
+  var srrNorm = (typeof p.srrNorm === "number" && p.srrNorm > 0) ? p.srrNorm : 0;
   var moderate = [];
   if(a.general === "quiet")   moderate.push("немного тише обычного");
   if(a.appetite === "less")   moderate.push("съел меньше обычного");
   if(a.appetite === "skip1")  moderate.push("пропустил один приём еды");
   if(a.gums === "red")        moderate.push("дёсны краснее обычного");
-  if(a.breathing === "heavy") moderate.push("дышит тяжелее обычного");
+  if(a.breathing === "heavy" && typeof a.srr !== "number") moderate.push("дышит тяжелее обычного");
+  if(typeof a.srr === "number" && a.srr < RULES.srr.concernMin && a.srr > (srrNorm || RULES.srr.normalMax))
+    moderate.push("дыхание в покое чаще обычного (" + a.srr + " вдох./мин)");
   if(a.vomit === "once")      moderate.push("однократная рвота или жидкий стул");
 
   var escalated = moderate.length >= RULES.moderateForYellow;
@@ -1413,7 +1430,7 @@ function evaluate(a, p){
   var keyUnknown = [];
   if(a.urine === "unknown"     || a.urine === undefined)     keyUnknown.push("моча");
   if(a.gums === "unknown"      || a.gums === undefined)      keyUnknown.push("дёсны");
-  if(a.breathing === "unknown" || a.breathing === undefined) keyUnknown.push("дыхание");
+  if((a.breathing === "unknown" || a.breathing === undefined) && typeof a.srr !== "number") keyUnknown.push("дыхание");
 
   var status;
   if(red.length)         status = "red";
@@ -1440,8 +1457,10 @@ function evaluate(a, p){
       ok.push("Один пропущенный приём еды — это не тревога");
     if(a.gums === "red")
       ok.push("Дёсны краснее обычного — если не проходит, отметьте при следующей проверке");
-    if(a.breathing === "heavy")
+    if(a.breathing === "heavy" && typeof a.srr !== "number")
       ok.push("Дышит тяжелее обычного — понаблюдайте в покое");
+    if(typeof a.srr === "number" && a.srr < RULES.srr.concernMin && a.srr > (srrNorm || RULES.srr.normalMax))
+      ok.push("Дыхание в покое чуть чаще обычного (" + a.srr + " вдох./мин) — понаблюдайте");
     if(a.vomit === "once")
       ok.push("Однократная рвота при обычном самочувствии — наблюдаем");
   }
@@ -1534,14 +1553,14 @@ function show(id){
 
 /* ══════════════════ Экран 1: профиль ══════════════════ */
 
-var draft = {photo:null, sex:"", skips:0, limpNorm:0, limpPaw:"none"};
+var draft = {photo:null, sex:"", skips:0, limpNorm:0, limpPaw:"none", trackSRR:false};
 
 function setVal(id, v){ var n = $("#"+id); if(n) n.value = (v === null || v === undefined) ? "" : v; }
 function getVal(id){ var n = $("#"+id); return n ? n.value.trim() : ""; }
 
 function renderSetup(existing){
   var src = normalizeProfile(existing ? JSON.parse(JSON.stringify(existing)) : {});
-  draft = {photo:src.photo, sex:src.sex, skips:src.skips, limpNorm:src.limpNorm, limpPaw:src.limpPaw};
+  draft = {photo:src.photo, sex:src.sex, skips:src.skips, limpNorm:src.limpNorm, limpPaw:src.limpPaw, trackSRR:!!src.trackSRR};
 
   $("#setupTitle").textContent = existing ? "Профиль Миши" : "Знакомство";
   $("#setupClose").hidden = !existing;
@@ -1553,6 +1572,7 @@ function renderSetup(existing){
   setVal("mealsPerDay", src.mealsPerDay); setVal("portion", src.portion); setVal("medFood", src.medFood);
   setVal("limpWhen", src.limpWhen); setVal("stoolFreq", src.stoolFreq); setVal("giNotes", src.giNotes);
   setVal("normTemp", src.tempNorm != null ? String(src.tempNorm) : "");
+  setVal("srrNorm", src.srrNorm != null ? String(src.srrNorm) : "");
   setVal("clinicName", src.clinicName); setVal("clinicPhone", src.clinicPhone); setVal("clinicAddr", src.clinicAddr);
   setVal("clinic24Name", src.clinic24Name); setVal("clinic24Phone", src.clinic24Phone); setVal("clinic24Addr", src.clinic24Addr);
   setVal("checkAM", src.checkAM || "09:00"); setVal("checkPM", src.checkPM || "20:00");
@@ -1562,6 +1582,17 @@ function renderSetup(existing){
   renderSkips();
   renderLimpNorm();
   renderNormPaws();
+  renderSrrToggle();
+}
+
+function renderSrrToggle(){
+  var b = $("#srrToggle");
+  if(!b) return;
+  b.textContent = draft.trackSRR ? "Счётчик дыхания включён" : "Считать дыхание в проверке";
+  b.classList.toggle("sel", !!draft.trackSRR);
+  b.setAttribute("aria-pressed", draft.trackSRR ? "true" : "false");
+  var f = $("#srrNormField");
+  if(f) f.hidden = !draft.trackSRR;
 }
 
 function showPhoto(){
@@ -1650,6 +1681,7 @@ function renderNormPaws(){
 
 function readProfileForm(){
   var t = parseFloat(String($("#normTemp").value).replace(",", "."));
+  var srr = parseInt(String($("#srrNorm").value).replace(/[^\d]/g, ""), 10);
   return normalizeProfile({
     schema: 3,
     name: getVal("dogName") || "Миша",
@@ -1672,6 +1704,8 @@ function readProfileForm(){
     stoolFreq: getVal("stoolFreq"),
     giNotes: getVal("giNotes"),
     tempNorm: isFinite(t) ? Math.round(t * 10) / 10 : null,
+    trackSRR: !!draft.trackSRR,
+    srrNorm: (isFinite(srr) && srr > 0) ? srr : null,
     checkAM: getVal("checkAM") || "09:00",
     checkPM: getVal("checkPM") || "20:00",
     clinicName: getVal("clinicName"),
@@ -1682,6 +1716,11 @@ function readProfileForm(){
     clinic24Addr: getVal("clinic24Addr")
   });
 }
+
+$("#srrToggle").addEventListener("click", function(){
+  draft.trackSRR = !draft.trackSRR;
+  renderSrrToggle();
+});
 
 $("#photoBtn").addEventListener("click", function(){ $("#photoInput").click(); });
 $("#photoImg").addEventListener("error", function(){
@@ -2160,10 +2199,14 @@ function firstUnanswered(a){
   return 0;
 }
 
+var srrTimer = null;
+function stopSrrTimer(){ if(srrTimer){ clearInterval(srrTimer); srrTimer = null; } }
+
 function renderQuestion(){
   var q = QUESTIONS[step];
   var body = $("#checkBody");
   var foot = $("#checkFoot");
+  stopSrrTimer();
   clear(body); clear(foot);
 
   $("#progBar").style.width = Math.round(step / QUESTIONS.length * 100) + "%";
@@ -2186,6 +2229,8 @@ function renderQuestion(){
     renderLimpQuestion(body, foot);
   }else if(q.type === "temp"){
     renderTempQuestion(body, foot);
+  }else if(q.id === "breathing" && profile && profile.trackSRR){
+    renderBreathingQuestion(body, foot);
   }else{
     var opts = el("div", "options");
     q.options.forEach(function(o){
@@ -2358,6 +2403,126 @@ function renderTempQuestion(body, foot){
   foot.appendChild(nextBtn);
 }
 
+/* A6: вопрос про дыхание со счётчиком вдохов в покое (когда profile.trackSRR).
+   Считаем 30 с, ×2 → вдохов/мин; качественные варианты остаются запасным путём. */
+function renderBreathingQuestion(body, foot){
+  var p = profile || {};
+  var norm = (typeof p.srrNorm === "number" && p.srrNorm > 0) ? p.srrNorm : null;
+  if(norm != null){
+    var n = el("div", "note");
+    n.innerHTML = "<b>Обычно у него:</b> " + norm + " вдох./мин в покое";
+    body.appendChild(n);
+  }
+  body.appendChild(el("div", "hint", "Посчитайте, когда он полежал и отдохнул хотя бы 10 минут. Один вдох — грудная клетка поднялась и опустилась."));
+
+  var result = el("div", "note");
+  result.hidden = true;
+  function showResult(bpm){
+    var ref = norm != null ? norm : RULES.srr.normalMax;
+    var msg = bpm + " вдохов в минуту. ";
+    if(bpm >= RULES.srr.concernMin) msg += "Это заметно чаще, чем должно быть в покое — стоит показать врачу.";
+    else if(bpm > ref) msg += "Немного чаще, чем обычно у него (" + ref + "). Понаблюдайте.";
+    else msg += "В пределах обычного.";
+    result.textContent = msg;
+    result.hidden = false;
+  }
+
+  var counter = el("div", "field");
+  body.appendChild(counter);
+  body.appendChild(result);
+
+  var optsWrap = el("div", "");
+  body.appendChild(optsWrap);
+
+  function renderOpts(){
+    clear(optsWrap);
+    var counted = typeof answers.srr === "number";
+    optsWrap.appendChild(el("div", "hint", counted ? "Или отметьте на глаз:" : "Или, если не считали:"));
+    var opts = el("div", "options");
+    var q = qById("breathing");
+    q.options.forEach(function(o){
+      var b = el("button", "opt" + (o.skip ? " skip" : ""));
+      b.type = "button";
+      var mark = el("div", "mark"); mark.innerHTML = tick();
+      var txt = el("div", "txt");
+      txt.appendChild(el("div", "lbl", o.label));
+      if(o.desc) txt.appendChild(el("div", "desc", o.desc));
+      b.appendChild(mark); b.appendChild(txt);
+      if(!counted && answers.breathing === o.v) b.classList.add("sel");
+      b.addEventListener("click", function(){
+        stopSrrTimer();
+        answers.breathing = o.v;
+        answers.srr = undefined;
+        setTimeout(next, 180);
+      });
+      opts.appendChild(b);
+    });
+    optsWrap.appendChild(opts);
+  }
+
+  function idleCounter(){
+    stopSrrTimer();
+    clear(counter);
+    var start = el("button", "btn primary", "Посчитать вдохи · 30 секунд");
+    start.type = "button";
+    start.addEventListener("click", runCounter);
+    counter.appendChild(start);
+    if(typeof answers.srr === "number"){
+      var again = el("button", "btn quiet", "Счёт: " + answers.srr + " вдох./мин — посчитать заново");
+      again.type = "button";
+      again.addEventListener("click", function(){ answers.srr = undefined; result.hidden = true; idleCounter(); renderOpts(); updateFoot(); });
+      counter.appendChild(again);
+      showResult(answers.srr);
+    }
+    renderOpts(); updateFoot();
+  }
+
+  function runCounter(){
+    stopSrrTimer();
+    var count = 0, left = 30;
+    clear(counter);
+    var big = el("button", "btn primary");
+    big.type = "button";
+    big.style.minHeight = "96px";
+    var lab = el("div", ""); lab.style.fontSize = "1.15rem";
+    var sub = el("div", "hint");
+    big.appendChild(lab); big.appendChild(sub);
+    function paint(){ lab.textContent = "Вдох  +1     ·     насчитано: " + count; sub.textContent = "осталось " + left + " с"; }
+    paint();
+    big.addEventListener("click", function(){ count++; paint(); });
+    counter.appendChild(big);
+    var stop = el("button", "btn quiet", "Остановить и посчитать");
+    stop.type = "button";
+    stop.addEventListener("click", function(){ finish(); });
+    counter.appendChild(stop);
+    function finish(){
+      stopSrrTimer();
+      var secs = 30 - left; if(secs < 5) secs = 5;
+      var bpm = Math.round(count / secs * 60);
+      answers.srr = bpm;
+      answers.breathing = undefined;
+      idleCounter();
+    }
+    srrTimer = setInterval(function(){
+      if(!$("#s-check").classList.contains("active")){ stopSrrTimer(); return; }
+      left--; paint();
+      if(left <= 0) finish();
+    }, 1000);
+  }
+
+  function updateFoot(){
+    clear(foot);
+    var counted = typeof answers.srr === "number";
+    var nextBtn = el("button", "btn " + (counted ? "primary" : "soft"),
+      counted ? "Дальше" : (editing ? "Дальше без изменений" : "Пропустить дыхание"));
+    nextBtn.type = "button";
+    nextBtn.addEventListener("click", function(){ stopSrrTimer(); next(); });
+    foot.appendChild(nextBtn);
+  }
+
+  idleCounter();
+}
+
 function next(){
   if(step < QUESTIONS.length - 1){
     step++;
@@ -2438,12 +2603,12 @@ function fmtAns(field, a){
 
 function diffAnswers(oldA, newA){
   oldA = oldA || {}; newA = newA || {};
-  var fields = ["general","collapse","urine","gums","appetite","limp","vomit","breathing","temp","overheat"];
+  var fields = ["general","collapse","urine","gums","appetite","limp","vomit","breathing","srr","temp","overheat"];
   var out = [];
   fields.forEach(function(k){
     var from = fmtAns(k, oldA), to = fmtAns(k, newA);
     if(from !== to){
-      out.push({ field: (k === "overheat" ? "Перегрев" : (Q_TITLES[k] || k)), from: from, to: to });
+      out.push({ field: (k === "overheat" ? "Перегрев" : (k === "srr" ? "Дыхание, вдох./мин" : (Q_TITLES[k] || k))), from: from, to: to });
     }
   });
   return out;
@@ -2741,6 +2906,9 @@ function answerLines(a){
       var t = a.temp;
       if(typeof t === "number") out.push([Q_TITLES.temp, t.toFixed(1) + " °C" + (a.overheat ? " · признаки перегрева" : "")]);
       else out.push([Q_TITLES.temp, a.overheat ? "не мерили · признаки перегрева" : "не мерили"]);
+    }else if(q.id === "breathing" && typeof a.srr === "number"){
+      out.push([Q_TITLES.breathing, a.srr + " вдох./мин" +
+        (a.breathing && q.short[a.breathing] && a.breathing !== "normal" ? " · " + q.short[a.breathing] : "")]);
     }else if(a[q.id] !== undefined && q.short){
       out.push([Q_TITLES[q.id], q.short[a[q.id]] || a[q.id]]);
     }

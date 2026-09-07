@@ -16,6 +16,8 @@ var P = { name:"Миша", skips:1, limpNorm:2, limpPaw:"bl", tempNorm:38.5 };
 var P0 = { name:"Миша", skips:0, limpNorm:0, limpPaw:"none", tempNorm:null };
 /* Норма хромоты «по-разному» */
 var PV = { name:"Миша", skips:0, limpNorm:2, limpPaw:"vary", tempNorm:null };
+/* A6: профиль с личной нормой дыхания в покое 22 вдох./мин */
+var PSRR = { name:"Миша", skips:0, limpNorm:0, limpPaw:"none", tempNorm:null, trackSRR:true, srrNorm:22 };
 
 var base = {
   general:"normal", collapse:"none", urine:"normal", gums:"normal",
@@ -47,6 +49,16 @@ check("температура 38.9 — норма", A({temp:38.9}), P, "green");
 check("температура 39.6 без ухудшения", A({temp:39.6}), P, "green");
 check("норма «по-разному», лапа другая", A({limp:2, limpPaw:"fr"}), PV, "green");
 check("не видели только мочу", A({urine:"unknown"}), P, "green");
+
+/* ── A6: дыхание в покое (SRR) ── */
+check("дыхание в покое 24, личной нормы нет", A({srr:24}), P0, "green");
+check("дыхание в покое 28 без личной нормы — одно отличие", A({srr:28}), P0, "green");
+check("дыхание 27 при норме 22 — одно отличие", A({srr:27}), PSRR, "green");
+check("дыхание 27 + съел меньше — два отличия", A({srr:27, appetite:"less"}), PSRR, "yellow");
+check("дыхание 27 + 'тяжелее дышит' не задваивается", A({srr:27, breathing:"heavy"}), PSRR, "green");
+check("дыхание в покое 34 — красный", A({srr:34}), P0, "red");
+check("дыхание в покое 30 при норме 22 — красный (порог)", A({srr:30}), PSRR, "red");
+check("дыхание в покое 30 + красный не важен профиль", A({srr:30, breathing:"labored"}), P0, "red");
 
 /* ── жёлтый: сумма мелочей ── */
 check("2+ небольших отличия (тише + меньше ел)", A({general:"quiet", appetite:"less"}), P, "yellow");
