@@ -2101,10 +2101,12 @@ $("#toDiary").addEventListener("click", function(){ renderDiary(); show("s-diary
 var step = 0;
 var answers = {};
 var editing = null;   /* id записи в режиме исправления, иначе null */
+var onContext = false; /* A5: показываем необязательный экран «что-то изменилось?» */
 
 function startCheck(){
   editing = null;
   step = 0;
+  onContext = false;
   answers = {};
   renderQuestion();
   show("s-check");
@@ -2113,7 +2115,9 @@ function startCheck(){
 function editCheck(entry){
   editing = entry.id;
   answers = JSON.parse(JSON.stringify(entry.answers || {}));
+  answers.context = entry.context || "";
   step = 0;
+  onContext = false;
   renderQuestion();
   show("s-check");
 }
@@ -2121,7 +2125,9 @@ function editCheck(entry){
 function resumeCheck(entry){
   editing = entry.id;
   answers = JSON.parse(JSON.stringify(entry.answers || {}));
+  answers.context = entry.context || "";
   step = firstUnanswered(answers);
+  onContext = false;
   renderQuestion();
   show("s-check");
 }
@@ -2328,7 +2334,7 @@ function renderTempQuestion(body, foot){
     answers.overheat = on;
   });
 
-  var nextBtn = el("button", "btn primary", editing ? "Сохранить" : "Готово");
+  var nextBtn = el("button", "btn primary", "Дальше");
   nextBtn.type = "button";
   nextBtn.addEventListener("click", next);
   foot.appendChild(nextBtn);
@@ -2338,12 +2344,52 @@ function next(){
   if(step < QUESTIONS.length - 1){
     step++;
     renderQuestion();
+  }else if(!onContext){
+    onContext = true;
+    renderContextStep();
   }else{
     finishCheck();
   }
 }
 
+/* A5: необязательный экран в самом конце проверки — свободный контекст для врача */
+function renderContextStep(){
+  var body = $("#checkBody"), foot = $("#checkFoot");
+  clear(body); clear(foot);
+  $("#progBar").style.width = "100%";
+  $("#progCount").textContent = "почти готово";
+  var track = $(".progress .track");
+  if(track){ track.setAttribute("aria-valuenow", QUESTIONS.length); track.setAttribute("aria-valuetext", "последний шаг"); }
+  $("#checkBack").style.visibility = "visible";
+
+  var head = el("div", "qhead");
+  head.appendChild(el("h2", "", "Что-то изменилось за эти дни?"));
+  head.appendChild(el("div", "hint", "Необязательно. Смена корма, погоды, режима, поездка, стресс — что-то, что поможет врачу связать самочувствие с причиной."));
+  body.appendChild(head);
+
+  var f = el("div", "field");
+  var ta = el("textarea");
+  ta.setAttribute("autocomplete", "off");
+  ta.setAttribute("rows", "3");
+  ta.placeholder = "например: перешли на новый корм три дня назад";
+  ta.value = answers.context || "";
+  ta.addEventListener("input", function(){ answers.context = ta.value; });
+  f.appendChild(ta);
+  body.appendChild(f);
+
+  var done = el("button", "btn primary", editing ? "Сохранить" : "Готово");
+  done.type = "button";
+  done.addEventListener("click", function(){ answers.context = ta.value; finishCheck(); });
+  foot.appendChild(done);
+
+  var skip = el("button", "btn quiet", "Пропустить");
+  skip.type = "button";
+  skip.addEventListener("click", function(){ answers.context = ""; finishCheck(); });
+  foot.appendChild(skip);
+}
+
 $("#checkBack").addEventListener("click", function(){
+  if(onContext){ onContext = false; renderQuestion(); return; }
   if(step > 0){ step--; renderQuestion(); }
 });
 $("#checkExit").addEventListener("click", function(){
@@ -2387,20 +2433,26 @@ function diffAnswers(oldA, newA){
 
 function finishCheck(){
   var res = evaluate(answers, profile);
+  onContext = false;
+  /* A5: контекст хранится верхним полем entry.context, не внутри answers */
+  var ctx = (answers.context || "").trim();
+  var answersClean = JSON.parse(JSON.stringify(answers));
+  delete answersClean.context;
 
   if(editing){
     var e = findEntry(editing);
     editing = null;
     if(e){
       var prev = e.answers || {};
-      var changes = diffAnswers(prev, answers);
+      var changes = diffAnswers(prev, answersClean);
       if(changes.length){
         if(!e.answersOriginal) e.answersOriginal = JSON.parse(JSON.stringify(prev));
         e.revisions = e.revisions || [];
         e.revisions.push({ ts: Date.now(), changes: changes });
         e.editedTs = Date.now();
       }
-      e.answers = JSON.parse(JSON.stringify(answers));
+      e.answers = answersClean;
+      if(ctx) e.context = ctx; else delete e.context;
       e.status = res.status; e.red = res.red; e.yellow = res.yellow; e.ok = res.ok;
       e.rulesVersion = RULES.version;
       save(KEY_ENTRIES, entries);
@@ -2421,8 +2473,9 @@ function finishCheck(){
     red: res.red,
     yellow: res.yellow,
     ok: res.ok,
-    answers: JSON.parse(JSON.stringify(answers))
+    answers: answersClean
   };
+  if(ctx) entry.context = ctx;
   entries.unshift(entry);
   if(entries.length > 400) entries.length = 400;
   save(KEY_ENTRIES, entries);
@@ -2562,6 +2615,13 @@ function renderResult(entry){
     var noteN = el("div", "note");
     noteN.innerHTML = "<b>Что делать:</b> когда будет возможность, посмотрите непроверенные показатели (цвет мочи и дёсен, дыхание в покое) и пройдите проверку снова.";
     body.appendChild(noteN);
+  }
+
+  if(entry.context){
+    var cxn = el("div", "note");
+    cxn.appendChild(el("b", "", "Контекст: "));
+    cxn.appendChild(document.createTextNode(entry.context));
+    body.appendChild(cxn);
   }
 
   if(entry.type !== "quick") body.appendChild(mediaBlock(entry));
@@ -2729,6 +2789,12 @@ function renderDiary(){
         qa.appendChild(el("span", "", pair[1]));
         detail.appendChild(qa);
       });
+      if(entry.context){
+        var cx = el("div", "qa");
+        cx.appendChild(el("b", "", "Контекст"));
+        cx.appendChild(el("span", "", entry.context));
+        detail.appendChild(cx);
+      }
       var meta = el("div", "qa");
       meta.appendChild(el("b", "", "Версия правил"));
       meta.appendChild(el("span", "", entry.rulesVersion || "н/д"));
@@ -3959,9 +4025,15 @@ function renderReportView(){
       flagged.forEach(function(e){
         cc.appendChild(el("div", "", whenText(e.ts) + " — " + STATUS_TEXT[e.status].title));
         e.red.concat(e.yellow).forEach(function(r){ cc.appendChild(el("div", "hint", "• " + r)); });
+        if(e.context) cc.appendChild(el("div", "hint", "Контекст: " + e.context));
       });
     }else{
       cc.appendChild(el("div", "hint", "Все проверки за период — в пределах его личной нормы, отдельные дни не расписываем."));
+    }
+    var ctxChecks = sc.checks.filter(function(e){ return e.context && !((e.red && e.red.length) || (e.yellow && e.yellow.length)); });
+    if(ctxChecks.length){
+      cc.appendChild(el("h3", "", "Контекст"));
+      ctxChecks.forEach(function(e){ cc.appendChild(el("div", "hint", fmtDate.format(new Date(e.ts)) + " — " + e.context)); });
     }
     var tPts = [];
     sc.checks.forEach(function(e){
@@ -4104,7 +4176,13 @@ function buildReportText(sc, p){
     sc.checks.filter(function(e){ return (e.red && e.red.length) || (e.yellow && e.yellow.length); }).forEach(function(e){
       L.push("  " + whenText(e.ts) + " — " + STATUS_TEXT[e.status].title);
       e.red.concat(e.yellow).forEach(function(r){ L.push("    - " + r); });
+      if(e.context) L.push("    контекст: " + e.context);
     });
+    var ctxTx = sc.checks.filter(function(e){ return e.context && !((e.red && e.red.length) || (e.yellow && e.yellow.length)); });
+    if(ctxTx.length){
+      L.push("  Контекст:");
+      ctxTx.forEach(function(e){ L.push("    " + fmtDate.format(new Date(e.ts)) + " — " + e.context); });
+    }
     var txPts = [];
     sc.checks.forEach(function(e){ if(e.answers && typeof e.answers.temp === "number") txPts.push({ ts: e.ts, v: e.answers.temp }); });
     txPts.sort(function(a, b){ return a.ts - b.ts; });
