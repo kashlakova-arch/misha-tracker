@@ -2683,6 +2683,17 @@ function renderResultFoot(entry){
     hasPrimary = true;
   }
 
+  if(entry.status === "red" || entry.status === "yellow"){
+    var vbtn = el("button", "btn soft", "Записать визит к врачу");
+    vbtn.type = "button";
+    vbtn.addEventListener("click", function(){
+      calTab = "upcoming";
+      show("s-calendar");
+      openVisitForm(null, { linkedEntryId: entry.id });
+    });
+    foot.appendChild(vbtn);
+  }
+
   if(entry.type === "full"){
     var ed = el("button", "btn soft", "Исправить ответы");
     ed.type = "button";
@@ -3589,11 +3600,13 @@ function openTickForm(existing){
 
 /* Блок «Файлы результата» (фото/PDF) для формы анализа. Файлы живут в ref.files и
    сохраняются сразу через persist() — большой файл не теряется при уходе с формы. */
-function labFilesBlock(ref, persist){
-  ref.files = Array.isArray(ref.files) ? ref.files : [];
+function labFilesBlock(ref, persist, opts){
+  opts = opts || {};
+  var key = opts.key || "files";
+  ref[key] = Array.isArray(ref[key]) ? ref[key] : [];
   var fileWrap = el("div", "card field");
-  fileWrap.appendChild(el("label", "", "Файлы результата"));
-  fileWrap.appendChild(el("div", "note", "Фото бланка или PDF. Фото сжимается, PDF сохраняется как есть."));
+  fileWrap.appendChild(el("label", "", opts.label || "Файлы результата"));
+  fileWrap.appendChild(el("div", "note", opts.hint || "Фото бланка или PDF. Фото сжимается, PDF сохраняется как есть."));
   var fileList = el("div", "field");
   fileWrap.appendChild(fileList);
   var fileInp = el("input"); fileInp.type = "file"; fileInp.accept = "image/*,application/pdf"; fileInp.hidden = true;
@@ -3601,8 +3614,8 @@ function labFilesBlock(ref, persist){
   function addFile(name, mime, url){
     if(url && url.length > 12000000){ alert("Файл слишком большой (больше ~9 МБ). Сожмите PDF или сфотографируйте бланк."); return; }
     var item = { id: makeId(), name: name || (mime.indexOf("pdf") >= 0 ? "документ.pdf" : "фото.jpg"), mime: mime, data: url };
-    ref.files.push(item);
-    if(!persist()){ ref.files.pop(); alert("Не удалось сохранить файл — возможно, не хватает места."); return; }
+    ref[key].push(item);
+    if(!persist()){ ref[key].pop(); alert("Не удалось сохранить файл — возможно, не хватает места."); return; }
     draw();
   }
   fileInp.addEventListener("change", function(){
@@ -3619,15 +3632,15 @@ function labFilesBlock(ref, persist){
   });
   function draw(){
     clear(fileList);
-    if(!ref.files.length){ fileList.appendChild(el("div", "hint", "файлов пока нет")); return; }
-    ref.files.forEach(function(fl, idx){
+    if(!ref[key].length){ fileList.appendChild(el("div", "hint", "файлов пока нет")); return; }
+    ref[key].forEach(function(fl, idx){
       var row = el("div", "rowline");
       var link = el("a", "hint grow", (fl.mime && fl.mime.indexOf("pdf") >= 0 ? "PDF · " : "фото · ") + (fl.name || "файл"));
       link.href = fl.data; link.target = "_blank"; link.rel = "noopener";
       row.appendChild(link);
       var rmf = el("button", "btn quiet", "Убрать");
       rmf.type = "button";
-      rmf.addEventListener("click", function(){ ref.files.splice(idx, 1); persist(); draw(); });
+      rmf.addEventListener("click", function(){ ref[key].splice(idx, 1); persist(); draw(); });
       row.appendChild(rmf);
       fileList.appendChild(row);
     });
@@ -3757,6 +3770,15 @@ function openAnalysisForm(tick, a, back){
 var EVENT_TYPES = [ {v:"visit", label:"Визит"}, {v:"lab", label:"Анализ"}, {v:"note", label:"Заметка"} ];
 function eventTypeLabel(v){ for(var i=0;i<EVENT_TYPES.length;i++) if(EVENT_TYPES[i].v === v) return EVENT_TYPES[i].label; return v; }
 
+/* B2: календарь — две секции. «Предстоит» (calendarItems) и «История» (прошедшие events). */
+var calTab = "upcoming";
+var calFilter = "all";
+
+function linkedEntryWhen(id){
+  for(var i = 0; i < entries.length; i++) if(entries[i].id === id) return whenText(entries[i].ts);
+  return "проверка не найдена";
+}
+
 function calendarItems(){
   var items = [];
   var nd = nextDue();
@@ -3791,9 +3813,43 @@ function calendarItems(){
   return items;
 }
 
+function calFootButtons(foot){
+  var addV = el("button", "btn primary", "＋ Визит");
+  addV.type = "button";
+  addV.addEventListener("click", function(){ openVisitForm(null, {}); });
+  foot.appendChild(addV);
+
+  var addLab = el("button", "btn soft", "＋ Добавить анализ");
+  addLab.type = "button";
+  addLab.addEventListener("click", function(){ openLabForm(null, { host: "cal", back: renderCalendar }); });
+  foot.appendChild(addLab);
+
+  var addNote = el("button", "btn soft", "＋ Заметка");
+  addNote.type = "button";
+  addNote.addEventListener("click", function(){ openEventForm(null); });
+  foot.appendChild(addNote);
+
+  var toMeds = el("button", "btn soft", "Лекарства и обработки");
+  toMeds.type = "button";
+  toMeds.addEventListener("click", function(){ renderMeds(); show("s-meds"); });
+  foot.appendChild(toMeds);
+
+  var toTick = el("button", "btn soft", "Укус клеща");
+  toTick.type = "button";
+  toTick.addEventListener("click", function(){ renderTickScreen(); show("s-tick"); });
+  foot.appendChild(toTick);
+}
+
 function renderCalendar(){
   var body = $("#calBody"), foot = $("#calFoot");
   clear(body); clear(foot);
+  body.appendChild(segControl(
+    [{v:"upcoming", label:"Предстоит"}, {v:"history", label:"История"}],
+    calTab, function(v){ calTab = v; renderCalendar(); }
+  ));
+
+  if(calTab === "history"){ renderCalHistory(body); calFootButtons(foot); return; }
+
   var items = calendarItems().filter(function(i){
     if(i.done) return false;
     var n = dayDiff(i.date);
@@ -3837,6 +3893,7 @@ function renderCalendar(){
       ed.type = "button";
       ed.addEventListener("click", function(){
         if(it.kind === "lab") openLabForm(it.ref, { host: "cal", back: renderCalendar });
+        else if(it.kind === "visit") openVisitForm(it.ref, {});
         else openEventForm(it.ref);
       });
       var rm = el("button", "btn quiet", "Удалить");
@@ -3852,54 +3909,282 @@ function renderCalendar(){
     body.appendChild(card);
   });
 
-  var addEv = el("button", "btn primary", "＋ Визит или заметка");
-  addEv.type = "button";
-  addEv.addEventListener("click", function(){ openEventForm(null); });
-  foot.appendChild(addEv);
-
-  var addLab = el("button", "btn soft", "＋ Добавить анализ");
-  addLab.type = "button";
-  addLab.addEventListener("click", function(){ openLabForm(null, { host: "cal", back: renderCalendar }); });
-  foot.appendChild(addLab);
-
-  var toMeds = el("button", "btn soft", "Лекарства и обработки");
-  toMeds.type = "button";
-  toMeds.addEventListener("click", function(){ renderMeds(); show("s-meds"); });
-  foot.appendChild(toMeds);
-
-  var toTick = el("button", "btn soft", "Укус клеща");
-  toTick.type = "button";
-  toTick.addEventListener("click", function(){ renderTickScreen(); show("s-tick"); });
-  foot.appendChild(toTick);
+  calFootButtons(foot);
 }
 
+/* История: прошедшие events (визиты/анализы/заметки), фильтр-чипы, сортировка по дате убыв. */
+function renderCalHistory(body){
+  var todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+  var past = events.filter(function(ev){
+    if(ev.type === "lab" && ev.linkedTickId) return false; /* анализы клеща — в модуле клеща */
+    var d = parseDate(ev.date);
+    return d && d.getTime() <= todayEnd.getTime();
+  }).sort(function(a, b){ return (parseDate(b.date) || 0) - (parseDate(a.date) || 0); });
+
+  var chips = [{v:"all", label:"Всё"}, {v:"visit", label:"Визиты"}, {v:"lab", label:"Анализы"}, {v:"note", label:"События"}];
+  var chipRow = el("div", "seg");
+  chips.forEach(function(c){
+    var b = el("button", calFilter === c.v ? "sel" : "", c.label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", calFilter === c.v ? "true" : "false");
+    b.addEventListener("click", function(){ calFilter = c.v; renderCalendar(); });
+    chipRow.appendChild(b);
+  });
+  body.appendChild(chipRow);
+
+  var shown = past.filter(function(ev){ return calFilter === "all" || ev.type === calFilter; });
+  $("#calSub").textContent = shown.length ? (shown.length + " " + plural(shown.length, "запись", "записи", "записей")) : "пусто";
+  if(!shown.length){ body.appendChild(el("div", "empty", "Здесь — прошедшие визиты, анализы и события.")); return; }
+
+  shown.forEach(function(ev){
+    var card = el("div", "card field");
+    var row = el("div", "rowline");
+    row.appendChild(el("div", "grow", eventTypeLabel(ev.type) + (ev.title ? ": " + ev.title : "")));
+    row.appendChild(el("span", "hint", fmtDate.format(parseDate(ev.date))));
+    card.appendChild(row);
+
+    if(ev.type === "visit"){
+      var bits = [ev.clinic, ev.vetName, ev.reason].filter(Boolean).join(" · ");
+      if(bits) card.appendChild(el("div", "hint", bits));
+      if(ev.recommendations) card.appendChild(el("div", "hint", ev.recommendations));
+      var vx = [];
+      if((ev.media || []).length) vx.push("файлов: " + ev.media.length);
+      if((ev.prescribedMedIds || []).length) vx.push("назначено курсов: " + ev.prescribedMedIds.length);
+      if(ev.followUpDate) vx.push("следующий: " + whenDayText(ev.followUpDate));
+      if(ev.linkedEntryId) vx.push("по проверке " + linkedEntryWhen(ev.linkedEntryId));
+      if(vx.length) card.appendChild(el("div", "hint", vx.join(" · ")));
+    }else if(ev.type === "lab"){
+      var lb = [ev.labType || ev.title, ev.lab, ev.result].filter(Boolean).join(" · ");
+      if(lb) card.appendChild(el("div", "hint", lb));
+      if(ev.vetComment) card.appendChild(el("div", "hint", "врач: " + ev.vetComment));
+      if((ev.files || []).length) card.appendChild(el("div", "hint", "файлов: " + ev.files.length));
+    }else if(ev.notes){
+      card.appendChild(el("div", "hint", ev.notes));
+    }
+
+    var act = el("div", "miniact");
+    var open = el("button", "btn soft", "Открыть");
+    open.type = "button";
+    open.addEventListener("click", function(){
+      if(ev.type === "visit") openVisitForm(ev, {});
+      else if(ev.type === "lab") openLabForm(ev, { host: "cal", back: renderCalendar });
+      else openEventForm(ev);
+    });
+    var rm = el("button", "btn quiet", "Удалить");
+    rm.type = "button";
+    rm.addEventListener("click", function(){
+      events = events.filter(function(x){ return x.id !== ev.id; });
+      save(KEY_EVENTS, events);
+      renderCalendar();
+    });
+    act.appendChild(open); act.appendChild(rm);
+    card.appendChild(act);
+    body.appendChild(card);
+  });
+}
+
+/* Заметка/событие (визиты — openVisitForm, анализы — openLabForm). */
 function openEventForm(existing){
   var body = $("#calBody"), foot = $("#calFoot");
   clear(body); clear(foot);
-  $("#calSub").textContent = existing ? "редактирование" : "новое событие";
-  var ev = existing || { id: makeId(), type: "visit", date: "", title: "", notes: "", done: false };
-  var draftType = ev.type || "visit";
+  $("#calSub").textContent = existing ? "правка заметки" : "новая заметка";
+  var ev = existing || { id: makeId(), type: "note", date: isoDay(new Date()), title: "", notes: "", done: false };
 
-  /* анализы заводятся отдельной формой (openLabForm) — здесь только визит/заметка */
-  var evTypeOpts = EVENT_TYPES.filter(function(o){ return o.v !== "lab" || draftType === "lab"; });
-  body.appendChild(segControl(evTypeOpts, draftType, function(v){ draftType = v; }));
   var fDate = fieldInput("Дата", ev.date, {type:"date"});
-  var fTitle = fieldInput("Коротко", ev.title, {placeholder:"плановый осмотр"});
-  var fNotes = fieldInput("Заметки / вопросы врачу", ev.notes, {textarea:true});
+  var fTitle = fieldInput("Коротко", ev.title, {placeholder:"что за событие"});
+  var fNotes = fieldInput("Подробнее", ev.notes, {textarea:true});
   body.appendChild(fDate); body.appendChild(fTitle); body.appendChild(fNotes);
 
   var saveBtn = el("button", "btn primary", "Сохранить");
   saveBtn.type = "button";
   saveBtn.addEventListener("click", function(){
-    ev.type = draftType;
-    ev.date = fDate._input.value;
+    if(!ev.type || ev.type === "visit") ev.type = "note";
+    ev.date = fDate._input.value || isoDay(new Date());
     ev.title = fTitle._input.value.trim();
     ev.notes = fNotes._input.value.trim();
-    if(events.indexOf(ev) < 0){ ev.createdAt = Date.now(); events.push(ev); }
+    var dd = dayDiff(ev.date);
+    if(existing === undefined || existing === null) ev.done = (dd !== null && dd < 0);
+    if(events.indexOf(ev) < 0){ ev.createdAt = Date.now(); ev.enteredAt = ev.enteredAt || Date.now(); events.push(ev); }
     save(KEY_EVENTS, events);
     renderCalendar();
   });
   foot.appendChild(saveBtn);
+  if(existing){
+    var del = el("button", "btn quiet", "Удалить");
+    del.type = "button";
+    del.addEventListener("click", function(){
+      if(!confirm("Удалить эту запись?")) return;
+      events = events.filter(function(x){ return x.id !== ev.id; });
+      save(KEY_EVENTS, events);
+      renderCalendar();
+    });
+    foot.appendChild(del);
+  }
+  var cancel = el("button", "btn quiet", "Отмена");
+  cancel.type = "button";
+  cancel.addEventListener("click", renderCalendar);
+  foot.appendChild(cancel);
+}
+
+/* B2: карточка визита к врачу — расширенный events type:"visit" (D1). */
+function visitClinicSeed(){
+  var p = profile || {};
+  return p.clinicName || "";
+}
+function syncVisitFollowUp(v){
+  if(!v) return false;
+  var cur = null, idx = -1;
+  if(v.followUpVisitId){
+    for(var i = 0; i < events.length; i++) if(events[i].id === v.followUpVisitId){ cur = events[i]; idx = i; break; }
+  }
+  if(!v.followUpDate){
+    if(cur){ events.splice(idx, 1); v.followUpVisitId = null; return true; }
+    return false;
+  }
+  if(cur){
+    if(cur.date !== v.followUpDate){ cur.date = v.followUpDate; cur.done = false; return true; }
+    return false;
+  }
+  var now = Date.now();
+  var ev = {
+    id: makeId(), type: "visit", date: v.followUpDate, title: "Повторный визит",
+    notes: "", done: false, createdAt: now, enteredAt: now,
+    clinic: v.clinic || "", vetName: v.vetName || "", reason: "повторный",
+    recommendations: "", prescribedMedIds: [], media: [], followUpDate: null,
+    linkedEntryId: null
+  };
+  events.push(ev);
+  v.followUpVisitId = ev.id;
+  return true;
+}
+
+function prescribedMedsBlock(v, persist){
+  v.prescribedMedIds = Array.isArray(v.prescribedMedIds) ? v.prescribedMedIds : [];
+  var wrap = el("div", "card field");
+  wrap.appendChild(el("label", "", "Назначенные курсы"));
+  var list = el("div", "field");
+  wrap.appendChild(list);
+  function draw(){
+    clear(list);
+    if(!v.prescribedMedIds.length){ list.appendChild(el("div", "hint", "нет")); return; }
+    v.prescribedMedIds.forEach(function(id, idx){
+      var m = null;
+      for(var i = 0; i < meds.length; i++) if(meds[i].id === id){ m = meds[i]; break; }
+      var row = el("div", "rowline");
+      row.appendChild(el("span", "hint grow", m ? (m.name || "курс") : "курс удалён"));
+      if(m){
+        var op = el("button", "btn quiet", "Открыть");
+        op.type = "button";
+        op.addEventListener("click", function(){ show("s-meds"); openMedForm(m); });
+        row.appendChild(op);
+      }
+      var rm = el("button", "btn quiet", "Убрать");
+      rm.type = "button";
+      rm.addEventListener("click", function(){ v.prescribedMedIds.splice(idx, 1); persist(); draw(); });
+      row.appendChild(rm);
+      list.appendChild(row);
+    });
+  }
+  draw();
+  var add = el("button", "btn soft", "＋ Назначен курс");
+  add.type = "button";
+  add.addEventListener("click", function(){
+    var name = prompt("Название назначенного препарата или курса:");
+    if(name == null) return;
+    name = name.trim();
+    if(!name) return;
+    var m = {
+      id: makeId(), kind: "med", name: name, substance: "", form: "", dose: "", unit: "",
+      timing: "", course: "", nextDate: "", reason: "назначено на визите",
+      prescriber: (v.vetName || ""), passport: "", contra: "", notes: "",
+      oneOff: false, startDate: null, intervalDays: null, reminderOffsetDaysOverride: null,
+      createdAt: Date.now(), log: []
+    };
+    meds.unshift(m);
+    save(KEY_MEDS, meds);
+    v.prescribedMedIds.push(m.id);
+    persist();
+    draw();
+  });
+  wrap.appendChild(add);
+  return wrap;
+}
+
+function openVisitForm(existing, opts){
+  opts = opts || {};
+  var body = $("#calBody"), foot = $("#calFoot");
+  clear(body); clear(foot);
+  $("#calSub").textContent = existing ? "визит · правка" : "новый визит";
+  var now = Date.now();
+  var v = existing || {
+    id: makeId(), type: "visit", date: isoDay(new Date()), title: "",
+    notes: "", done: false, createdAt: now, enteredAt: now,
+    clinic: visitClinicSeed(), vetName: "", reason: "", recommendations: "",
+    prescribedMedIds: [], media: [], followUpDate: null,
+    linkedEntryId: opts.linkedEntryId || null
+  };
+  if(!Array.isArray(v.prescribedMedIds)) v.prescribedMedIds = [];
+  if(!Array.isArray(v.media)) v.media = [];
+
+  var REASONS = [
+    {v:"", label:"—"}, {v:"плановый", label:"Плановый"},
+    {v:"по симптому", label:"По симптому"}, {v:"повторный", label:"Повторный"}
+  ];
+  var draftReason = v.reason || "";
+
+  var fDate = fieldInput("Дата визита", v.date, {type:"date"});
+  var fTitle = fieldInput("Коротко", v.title, {placeholder:"осмотр, вакцинация…"});
+  var reasonWrap = el("div", "field");
+  reasonWrap.appendChild(el("label", "", "Повод"));
+  reasonWrap.appendChild(segControl(REASONS, draftReason, function(x){ draftReason = x; }));
+  var fClinic = fieldInput("Клиника", v.clinic, {placeholder:"название"});
+  var fVet = fieldInput("Врач", v.vetName, {placeholder:"ФИО"});
+  var fRec = fieldInput("Назначения и рекомендации", v.recommendations, {textarea:true});
+  var fNotes = fieldInput("Заметки / вопросы", v.notes, {textarea:true});
+  var fFollow = fieldInput("Следующий визит (если назначен)", v.followUpDate || "", {type:"date"});
+  [fDate, fTitle, reasonWrap, fClinic, fVet, fRec, fNotes, fFollow].forEach(function(f){ body.appendChild(f); });
+
+  if(v.linkedEntryId) body.appendChild(el("div", "note", "Связан с проверкой: " + linkedEntryWhen(v.linkedEntryId)));
+
+  function persistVisit(){
+    if(events.indexOf(v) < 0) events.push(v);
+    return save(KEY_EVENTS, events);
+  }
+  body.appendChild(labFilesBlock(v, persistVisit, { key: "media", label: "Фото и файлы визита", hint: "Заключение, чек, назначение — фото или PDF." }));
+  body.appendChild(prescribedMedsBlock(v, persistVisit));
+
+  var saveBtn = el("button", "btn primary", "Сохранить визит");
+  saveBtn.type = "button";
+  saveBtn.addEventListener("click", function(){
+    v.date = fDate._input.value || isoDay(new Date());
+    v.title = fTitle._input.value.trim();
+    v.reason = draftReason;
+    v.clinic = fClinic._input.value.trim();
+    v.vetName = fVet._input.value.trim();
+    v.recommendations = fRec._input.value.trim();
+    v.notes = fNotes._input.value.trim();
+    v.followUpDate = fFollow._input.value || null;
+    if(!v.enteredAt) v.enteredAt = Date.now();
+    if(!v.createdAt) v.createdAt = v.enteredAt;
+    var dd = dayDiff(v.date);
+    v.done = (dd !== null && dd <= 0);
+    if(events.indexOf(v) < 0) events.push(v);
+    syncVisitFollowUp(v);
+    save(KEY_EVENTS, events);
+    renderCalendar();
+  });
+  foot.appendChild(saveBtn);
+  if(existing){
+    var del = el("button", "btn quiet", "Удалить визит");
+    del.type = "button";
+    del.addEventListener("click", function(){
+      if(!confirm("Удалить эту запись о визите?")) return;
+      events = events.filter(function(x){ return x.id !== v.id && x.id !== v.followUpVisitId; });
+      save(KEY_EVENTS, events);
+      renderCalendar();
+    });
+    foot.appendChild(del);
+  }
   var cancel = el("button", "btn quiet", "Отмена");
   cancel.type = "button";
   cancel.addEventListener("click", renderCalendar);
@@ -4181,7 +4466,7 @@ $("#walkBack").addEventListener("click", function(){ renderHome(); show("s-home"
 
 var KEY_REPORTNOTES = "misha.reportNotes";
 var REPORT_PERIODS = [ {v:"7", label:"7 дней"}, {v:"14", label:"14 дней"}, {v:"30", label:"30 дней"}, {v:"0", label:"всё время"} ];
-var reportDraft = { days: 14, cats: { checks:true, weights:true, walks:true, meds:true, ticks:true, events:true, photos:true }, questions: "" };
+var reportDraft = { days: 14, cats: { checks:true, weights:true, walks:true, meds:true, visits:true, ticks:true, events:true, photos:true }, questions: "" };
 
 function startReport(){
   reportDraft.questions = load(KEY_REPORTNOTES, "") || "";
@@ -4204,8 +4489,9 @@ function renderReportSetup(){
     {k:"weights", label:"Вес и график"},
     {k:"walks",  label:"Отметки после прогулок"},
     {k:"meds",   label:"Лекарства, обработки, прививки"},
+    {k:"visits", label:"Визиты к врачу"},
     {k:"ticks",  label:"Укусы клеща и анализы"},
-    {k:"events", label:"Визиты и анализы"},
+    {k:"events", label:"Анализы и заметки"},
     {k:"photos", label:"Фотографии"}
   ];
   var cf = el("div", "field");
@@ -4425,22 +4711,49 @@ function renderReportView(){
     body.appendChild(tc);
   }
 
+  if(reportDraft.cats.visits){
+    var visNow = Date.now();
+    var vis = events.filter(function(ev){ return ev.type === "visit"; })
+      .filter(function(ev){ var t = parseDate(ev.date); t = t ? t.getTime() : ev.enteredAt; return t <= visNow && (!reportDraft.days || t >= sc.since); })
+      .sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
+    if(vis.length){
+      var vc = el("div", "card rep");
+      vc.appendChild(el("h3", "", "Визиты к врачу"));
+      vis.forEach(function(ev){
+        vc.appendChild(el("div", "", whenDayText(ev.date) + " — " + (ev.title || ev.reason || "визит") +
+          (ev.clinic ? (", " + ev.clinic) : "") + (ev.vetName ? (", " + ev.vetName) : "")));
+        if(ev.recommendations) vc.appendChild(el("div", "hint", "назначения: " + ev.recommendations));
+        if(ev.followUpDate) vc.appendChild(el("div", "hint", "следующий визит: " + whenDayText(ev.followUpDate)));
+        if(ev.linkedEntryId) vc.appendChild(el("div", "hint", "по проверке " + linkedEntryWhen(ev.linkedEntryId)));
+      });
+      body.appendChild(vc);
+    }
+  }
+
   if(reportDraft.cats.events && events.length){
-    /* анализы клеща показаны в разделе «Укусы клеща» — не дублируем */
-    var evs = events.filter(function(ev){ return !(ev.type === "lab" && ev.linkedTickId); })
-                    .sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
-    var ec = el("div", "card rep");
-    ec.appendChild(el("h3", "", "Визиты и анализы"));
-    evs.forEach(function(ev){
-      ec.appendChild(el("div", "", eventTypeLabel(ev.type) + ": " + (ev.title || "—") + " — " + whenDayText(ev.date) + (ev.done ? " (выполнено)" : "")));
-      if(ev.notes) ec.appendChild(el("div", "hint", ev.notes));
-    });
-    body.appendChild(ec);
+    /* анализы клеща — в «Укусы клеща», визиты — в своём разделе; здесь не дублируем */
+    var evs = events.filter(function(ev){
+      if(ev.type === "lab" && ev.linkedTickId) return false;
+      if(ev.type === "visit" && reportDraft.cats.visits) return false;
+      return true;
+    }).sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
+    if(evs.length){
+      var ec = el("div", "card rep");
+      ec.appendChild(el("h3", "", "Анализы и заметки"));
+      evs.forEach(function(ev){
+        ec.appendChild(el("div", "", eventTypeLabel(ev.type) + ": " + (ev.title || "—") + " — " + whenDayText(ev.date) + (ev.done ? " (выполнено)" : "")));
+        if(ev.notes) ec.appendChild(el("div", "hint", ev.notes));
+      });
+      body.appendChild(ec);
+    }
   }
 
   if(reportDraft.cats.photos){
     var photos = [];
     sc.checks.concat(sc.walks).forEach(function(e){ (e.media || []).forEach(function(mm){ photos.push(mm.data); }); });
+    events.forEach(function(ev){ if(ev.type === "visit") (ev.media || []).forEach(function(fl){
+      if(fl && fl.data && fl.mime && fl.mime.indexOf("image/") === 0) photos.push(fl.data);
+    }); });
     ticks.forEach(function(t){ [t.photoTick, t.photoBite].forEach(function(x){ if(x) photos.push(x); }); });
     ticks.forEach(function(t){ tickLabs(t).forEach(function(a){ (a.files || []).forEach(function(fl){
       if(fl && fl.data && fl.mime && fl.mime.indexOf("image/") === 0) photos.push(fl.data);
@@ -4551,10 +4864,26 @@ function buildReportText(sc, p){
     });
     L.push("");
   }
+  if(reportDraft.cats.visits){
+    var vtxNow = Date.now();
+    var vtx = events.filter(function(ev){ return ev.type === "visit"; })
+      .filter(function(ev){ var t = parseDate(ev.date); t = t ? t.getTime() : ev.enteredAt; return t <= vtxNow && (!reportDraft.days || t >= sc.since); })
+      .sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
+    if(vtx.length){
+      L.push("ВИЗИТЫ К ВРАЧУ:");
+      vtx.forEach(function(ev){
+        L.push("  " + whenDayText(ev.date) + " — " + (ev.title || ev.reason || "визит") + (ev.clinic ? (", " + ev.clinic) : "") + (ev.vetName ? (", " + ev.vetName) : ""));
+        if(ev.recommendations) L.push("    назначения: " + ev.recommendations);
+        if(ev.followUpDate) L.push("    следующий визит: " + whenDayText(ev.followUpDate));
+      });
+      L.push("");
+    }
+  }
   if(reportDraft.cats.events && events.length){
-    L.push("ВИЗИТЫ И АНАЛИЗЫ:");
+    L.push("АНАЛИЗЫ И ЗАМЕТКИ:");
     events.forEach(function(ev){
       if(ev.type === "lab" && ev.linkedTickId) return; /* показаны в «Укусы клеща» */
+      if(ev.type === "visit" && reportDraft.cats.visits) return; /* в разделе «Визиты» */
       L.push("  " + eventTypeLabel(ev.type) + ": " + (ev.title || "—") + " — " + whenDayText(ev.date) + (ev.done ? " (выполнено)" : ""));
     });
     L.push("");
