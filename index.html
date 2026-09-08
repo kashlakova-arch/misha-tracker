@@ -12,6 +12,8 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon-180.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap">
 <title>Misha Health Tracker</title>
 <style>
   :root{
@@ -69,21 +71,28 @@
     z-index:1;
   }
 
-  /* ═══ Фоновый декор (§3): тёплые пятна по углам + едва заметный след лап.
-     Держится вне текста, ~4–5% контраста; на потоках и тревожном статусе гаснет. ═══ */
+  /* ═══ Фоновый декор (§3, макет): тёплые пятна по углам + лапки и сердечки по краям.
+     На потоках проверки и тревожном статусе приглушается. ═══ */
   .bg{
     position:fixed;inset:0;z-index:0;pointer-events:none;
     transition:opacity .3s ease;
     background:
-      radial-gradient(58vw 58vw at 6% -8%, rgba(110,135,104,.09), transparent 70%),
-      radial-gradient(64vw 64vw at 106% 106%, rgba(217,144,103,.09), transparent 70%),
-      radial-gradient(46vw 46vw at 96% 30%, rgba(146,183,196,.07), transparent 72%);
+      radial-gradient(52vw 44vw at 2% -8%, rgba(110,135,104,.15), transparent 70%),
+      radial-gradient(46vw 40vw at 102% 0%, rgba(217,144,103,.11), transparent 72%),
+      radial-gradient(58vw 50vw at 106% 104%, rgba(110,135,104,.12), transparent 72%),
+      radial-gradient(42vw 36vw at -6% 102%, rgba(146,183,196,.11), transparent 74%);
   }
-  .bg .paw{position:absolute;color:var(--ink);fill:currentColor;opacity:.045}
-  .bg .paw.p1{width:52px;top:calc(env(safe-area-inset-top) + 6px);right:8px;transform:rotate(-12deg)}
-  .bg .paw.p2{width:34px;top:calc(env(safe-area-inset-top) + 52px);right:76px;transform:rotate(16deg)}
-  .bg .paw.p3{width:28px;top:calc(env(safe-area-inset-top) + 92px);right:26px;transform:rotate(-4deg)}
-  body.plain .bg{opacity:0}
+  .bg .paw{position:absolute;color:var(--sage-deep);fill:currentColor;opacity:.09}
+  .bg .heart{position:absolute;stroke:var(--apricot);fill:none;stroke-width:2.2;opacity:.42}
+  .bg .p1{width:66px;top:calc(env(safe-area-inset-top) + 2px);left:8px;transform:rotate(-18deg)}
+  .bg .p2{width:40px;top:calc(env(safe-area-inset-top) + 66px);left:70px;transform:rotate(12deg)}
+  .bg .p3{width:52px;top:40%;right:-8px;transform:rotate(22deg)}
+  .bg .p4{width:44px;bottom:15%;left:-6px;transform:rotate(-12deg)}
+  .bg .p5{width:56px;bottom:calc(env(safe-area-inset-bottom) + 80px);right:12px;transform:rotate(8deg)}
+  .bg .hh1{width:26px;top:calc(env(safe-area-inset-top) + 12px);left:80px;transform:rotate(-12deg)}
+  .bg .hh2{width:20px;top:19%;right:32px;transform:rotate(14deg)}
+  .bg .hh3{width:22px;bottom:21%;right:38px;transform:rotate(-8deg)}
+  body.plain .bg{opacity:.32}
 
   .screen{display:none;flex-direction:column;flex:1;min-height:100vh;min-height:100dvh}
   .screen.active{display:flex}
@@ -292,61 +301,112 @@
   .reasons li .status-dot{margin-top:7px}
   .reasons li.ok{color:var(--ink-soft)}
 
-  /* ——— главный экран: приветствие (§7.1) ——— */
-  .greet{padding:2px 0 0}
-  .greet-hi{font-size:1.5rem;font-weight:680;letter-spacing:-.02em;line-height:1.2}
-  .greet-sub{font-size:.9375rem;color:var(--muted);margin-top:3px}
-  #s-home.calm .greet-hi{font-size:1.25rem}
-
-  .hero{display:flex;align-items:center;gap:16px;padding:2px 0}
-  .hero .avatar{width:76px;height:76px;border-radius:26px;object-fit:cover;flex:none;background:var(--cream-deep)}
-  .hero .avatar.ph{display:grid;place-items:center;border:1px solid var(--line)}
-  .hero .avatar.ph svg{width:38px;height:38px;stroke:var(--muted);fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
-  .hero .hcol{min-width:0}
-  .hero .name{font-size:1.5rem;font-weight:680;letter-spacing:-.02em;line-height:1.15}
-  .hero .caption{font-size:.9375rem;color:var(--muted);margin-top:2px}
-
-  .statuscard{
-    display:flex;flex-direction:column;gap:11px;
-    padding:18px;border-radius:var(--radius);
-    background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);
-  }
-  .statuscard .row{display:flex;align-items:center;gap:10px}
-  .statuscard .row .when{font-size:.8125rem;color:var(--muted);margin-left:auto;flex:none}
-  .statuscard .title{font-size:1.0625rem;font-weight:660}
-  .statuscard .sum{font-size:.9rem;color:var(--ink-soft);line-height:1.45}
-  .statuscard.tone-yellow{background:var(--amber-soft);border-color:#EDDFC0}
-  .statuscard.tone-red{background:var(--terra-soft);border-color:#EBD3CA}
-
   .empty{text-align:center;color:var(--muted);font-size:.9375rem;padding:8px 0}
+  .script{font-family:"Caveat",cursive;color:var(--muted);line-height:1.1}
 
-  /* ——— блок «Сегодня» (§7.1) ——— */
-  .today{
+  /* ═══ Главный экран «Сегодня» (макет) ═══ */
+  .home-top{display:flex;align-items:flex-start;gap:10px;padding:2px 0 0}
+  .home-top .grow{flex:1;min-width:0}
+  .greet-hi{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+  .greet-hi .hrt{color:var(--apricot);font-weight:400;margin-left:4px}
+  .greet-sub{font-size:.9375rem;color:var(--muted);margin-top:4px}
+  #s-home.calm .greet-hi{font-size:1.3rem}
+  #s-home.calm .greet-hi .hrt{display:none}
+  .bell{
+    width:44px;height:44px;flex:none;border-radius:50%;
+    border:1px solid var(--line);background:var(--card);
+    display:grid;place-items:center;cursor:pointer;position:relative;
+  }
+  .bell svg{width:20px;height:20px;stroke:var(--sage-deep);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .bell .dot{position:absolute;top:8px;right:9px;width:9px;height:9px;border-radius:50%;background:var(--terra);border:2px solid var(--card)}
+
+  .hero2{
+    display:flex;gap:15px;position:relative;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);padding:14px;
+  }
+  .hero2 .h-photo{
+    width:43%;max-width:186px;flex:none;align-self:stretch;min-height:158px;
+    border-radius:20px;object-fit:cover;background:var(--sage-soft);
+  }
+  .hero2 .h-photo.ph{display:grid;place-items:center;border:1px solid var(--line)}
+  .hero2 .h-photo.ph svg{width:46px;height:46px;stroke:var(--muted);fill:none;stroke-width:1.3}
+  .hero2 .h-col{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+  .hero2 .h-name{font-size:1.6rem;font-weight:700;letter-spacing:-.025em;line-height:1.1}
+  .hero2 .h-meta{font-size:.9375rem;color:var(--sage-deep);font-weight:600;margin-top:4px}
+  .hero2 .h-last{font-size:.75rem;color:var(--muted);margin-top:7px}
+  .hero2 .h-bubble{
+    align-self:flex-start;margin-top:9px;max-width:100%;
+    background:var(--sage-soft);color:var(--sage-deep);
+    border-radius:16px;padding:7px 13px;
+    font-family:"Caveat",cursive;font-size:1.2rem;line-height:1.1;
+  }
+  .hero2 .h-bubble.b-yellow{background:var(--amber-soft);color:var(--amber-deep)}
+  .hero2 .h-bubble.b-red{background:var(--terra-soft);color:var(--terra-deep)}
+  .hero2 .h-bubble.b-neutral{background:var(--cream-deep);color:var(--ink-soft)}
+
+  .ask-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);padding:18px;
+    display:flex;flex-direction:column;gap:13px;
+  }
+  .ask-card .ask-hd{display:flex;align-items:center;gap:14px}
+  .ask-card .ask-ic{width:48px;height:48px;flex:none;border-radius:50%;background:var(--apricot-soft);display:grid;place-items:center}
+  .ask-card .ask-ic svg{width:22px;height:22px;stroke:var(--apricot);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .ask-card .ask-q{font-size:1.1875rem;font-weight:700;letter-spacing:-.01em}
+  .ask-card .ask-h{font-size:.9375rem;color:var(--muted);margin-top:2px}
+  .ask-card .ask-btns{display:flex;gap:10px}
+  .ask-card .ask-btns .btn{flex:1;min-height:56px;border-radius:16px}
+  .ask-card .ask-btns .btn svg{width:19px;height:19px;flex:none}
+  #s-home.calm .ask-card .ask-ic{background:var(--cream-deep)}
+  #s-home.calm .ask-card .ask-ic svg{stroke:var(--muted)}
+
+  /* ——— блок «Сегодня» ——— */
+  .today2{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);padding:16px 18px 6px;position:relative;
+    display:flex;flex-direction:column;
+  }
+  .today2 > h3{font-size:1.375rem;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+  .trow{
+    display:flex;align-items:center;gap:12px;width:100%;
+    padding:11px 0;border:0;border-top:1px solid var(--line);
+    background:none;font:inherit;color:inherit;text-align:left;
+  }
+  #homeSched .trow:first-child{border-top:0}
+  .trow.tap{cursor:pointer}
+  .trow.tap:active{opacity:.55}
+  .trow .tr-time{font-variant-numeric:tabular-nums;font-size:.9375rem;font-weight:600;color:var(--ink);flex:none;min-width:46px}
+  .trow .tr-ic{width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);background:var(--card)}
+  .trow .tr-ic svg{width:14px;height:14px;fill:none;stroke:var(--muted);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .trow .tr-ic.done{background:var(--sage);border-color:var(--sage)}
+  .trow .tr-ic.done svg{stroke:#fff}
+  .trow .tr-ic.kind{border-color:transparent;background:var(--sage-soft)}
+  .trow .tr-ic.kind svg{stroke:var(--sage-deep)}
+  .trow .tr-ic.warn{border-color:transparent;background:var(--apricot-soft)}
+  .trow .tr-ic.warn svg{stroke:var(--apricot)}
+  .trow .tr-lbl{flex:1;min-width:0;font-size:.9375rem;line-height:1.3}
+  .trow .tr-right{flex:none;color:var(--muted);display:flex;align-items:center}
+  .trow .tr-chev{width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
+  .trow.tick-row .tr-lbl{font-weight:600}
+  .today-empty{font-size:.9rem;color:var(--muted);padding:8px 0}
+
+  .big-actions{display:flex;gap:12px}
+  .big-actions .ba{
+    flex:1;min-width:0;cursor:pointer;
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    box-shadow:var(--shadow);padding:16px 18px;
-    display:flex;flex-direction:column;gap:10px;
+    box-shadow:var(--shadow);padding:15px;
+    display:flex;align-items:center;gap:10px;
   }
-  .today h3{font-size:.8125rem;font-weight:650;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-  .today .note{padding:0;background:none;font-size:.9rem;color:var(--ink-soft)}
-  .today .note b{color:var(--ink)}
-  .sched-row{display:flex;align-items:center;gap:10px;font-size:.9375rem;line-height:1.3}
-  .sched-row .t{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.875rem;flex:none;min-width:44px}
-  .sched-row .lbl{flex:1;min-width:0}
-  .sched-row .pill{flex:none}
-  .sched-row.tap{cursor:pointer}
-  .sched-row.tap:active{opacity:.6}
-  .sched-row.tick{
-    background:var(--apricot-soft);border-radius:12px;
-    padding:10px 12px;margin:0 0 2px;width:100%;text-align:left;border:0;
-  }
-  .sched-row.tick .lbl{font-weight:600;color:var(--ink)}
-  .sched-row.tick .pill{background:var(--apricot);color:#fff}
-  .today-empty{font-size:.9rem;color:var(--muted)}
-
-  .ask{padding:4px 2px 0}
-  .ask-q{font-size:1.0625rem;font-weight:640}
-  .ask-h{font-size:.9rem;color:var(--muted);margin-top:2px}
-  #s-home.calm .ask{display:none}
+  .big-actions .ba:active{background:var(--cream-deep)}
+  .big-actions .ba .ba-ic{width:40px;height:40px;flex:none;border-radius:12px;display:grid;place-items:center}
+  .big-actions .ba .ba-ic svg{width:20px;height:20px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .big-actions .a-weight .ba-ic{background:var(--apricot-soft)}
+  .big-actions .a-weight .ba-ic svg{stroke:var(--apricot)}
+  .big-actions .a-qol .ba-ic{background:var(--sage-soft)}
+  .big-actions .a-qol .ba-ic svg{stroke:var(--sage-deep)}
+  .big-actions .ba .ba-t{flex:1;font-weight:600;font-size:.9375rem}
+  .big-actions .ba .tr-chev{flex:none;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
 
   .disclosure{border:1px solid var(--line);border-radius:16px;background:var(--card)}
   .disclosure > summary{
@@ -359,33 +419,84 @@
   .disclosure[open] > summary::after{transform:rotate(45deg)}
   .disclosure .note{margin:0 16px 14px;background:none;padding:0;font-size:.875rem}
 
-  /* ——— профиль: обзор + подразделы (§7.10) ——— */
+  /* ═══ Профиль «Миша» (макет) ═══ */
   .foot[hidden]{display:none !important}
   .setup-sec[hidden]{display:none !important}
-  .prof-hero{display:flex;align-items:center;gap:16px;padding:4px 0 0}
+  #s-setup .top > div{flex:1;text-align:center;min-width:0}
+  #s-setup .top h1{font-size:1.5rem}
+  .prof-hero{display:flex;gap:16px;align-items:flex-start;padding:2px 0 2px;position:relative}
+  .prof-photo-wrap{position:relative;flex:none}
   .prof-photo{
-    width:96px;height:96px;flex:none;border-radius:28px;overflow:hidden;
-    border:1px solid var(--line);background:var(--cream-deep);
+    width:130px;height:130px;border-radius:50%;overflow:hidden;
+    border:1px solid var(--line);background:var(--sage-soft);
     padding:0;cursor:pointer;display:grid;place-items:center;
   }
   .prof-photo img{width:100%;height:100%;object-fit:cover;display:block}
   .prof-photo span{font-size:.8125rem;color:var(--muted)}
-  .prof-id{min-width:0}
-  .prof-name{font-size:1.5rem;font-weight:680;letter-spacing:-.02em;line-height:1.15}
-  .prof-meta{font-size:.9375rem;color:var(--muted);margin-top:3px}
-  .prof-photo-hint{font-size:.75rem;color:var(--muted);margin-top:-6px}
-  .secnav{display:flex;flex-direction:column;gap:8px}
-  .secnav button{
-    width:100%;text-align:left;cursor:pointer;
-    background:var(--card);border:1px solid var(--line);border-radius:16px;
-    padding:14px 16px;display:flex;align-items:center;gap:12px;
-    transition:background .15s ease;
+  .prof-cam{
+    position:absolute;right:0;bottom:8px;
+    width:38px;height:38px;border-radius:50%;padding:0;cursor:pointer;
+    background:var(--sage-deep);border:3px solid var(--cream);
+    display:grid;place-items:center;
   }
-  .secnav button:active{background:var(--cream-deep)}
-  .secnav .sn-col{flex:1;min-width:0}
-  .secnav .sn-t{font-size:1rem;font-weight:600;color:var(--ink)}
-  .secnav .sn-d{font-size:.8125rem;color:var(--muted);margin-top:1px}
-  .secnav .sn-ch{flex:none;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
+  .prof-cam svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .prof-id{flex:1;min-width:0;padding-top:6px}
+  .prof-name{font-size:1.6rem;font-weight:700;letter-spacing:-.025em;line-height:1.1}
+  .prof-meta{font-size:.9375rem;color:var(--muted);margin-top:3px}
+  .prof-pill{
+    display:inline-flex;align-items:center;gap:7px;margin-top:9px;
+    background:var(--sage-soft);color:var(--sage-deep);
+    border-radius:999px;padding:5px 13px;font-size:.9375rem;font-weight:600;
+  }
+  .prof-pill svg{width:15px;height:15px;stroke:currentColor;fill:currentColor}
+  .prof-bubble{
+    display:inline-block;margin-top:9px;
+    background:var(--apricot-soft);color:var(--terra-deep);
+    border-radius:14px;padding:5px 12px;
+    font-family:"Caveat",cursive;font-size:1.15rem;line-height:1.1;
+  }
+  .prof-photo-hint{font-size:.75rem;color:var(--muted);margin-top:6px}
+
+  .stat-row{display:flex;gap:10px;margin-top:6px}
+  .stat-card{
+    flex:1;min-width:0;cursor:pointer;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:12px 8px;
+    display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;
+  }
+  .stat-card:active{background:var(--cream-deep)}
+  .stat-card .sc-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center}
+  .stat-card .sc-ic svg{width:18px;height:18px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .stat-card.c-w .sc-ic{background:var(--apricot-soft)}
+  .stat-card.c-w .sc-ic svg{stroke:var(--apricot)}
+  .stat-card.c-n .sc-ic{background:var(--sage-soft)}
+  .stat-card.c-n .sc-ic svg{stroke:var(--sage-deep)}
+  .stat-card.c-v .sc-ic{background:var(--sage-soft)}
+  .stat-card.c-v .sc-ic svg{stroke:var(--sage-deep)}
+  .stat-card .sc-k{font-size:.75rem;color:var(--muted)}
+  .stat-card .sc-v{font-size:.9375rem;font-weight:680;line-height:1.15}
+
+  .secgroup{font-size:1.125rem;font-weight:700;letter-spacing:-.01em;margin:20px 2px 8px}
+  .seccard{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    box-shadow:var(--shadow);overflow:hidden;
+  }
+  .secrow{
+    width:100%;text-align:left;cursor:pointer;background:none;
+    border:0;border-bottom:1px solid var(--line);
+    padding:14px 16px;display:flex;align-items:center;gap:13px;
+  }
+  .secrow:last-child{border-bottom:0}
+  .secrow:active{background:var(--cream-deep)}
+  .secrow .sr-ic{width:36px;height:36px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--sage-soft)}
+  .secrow .sr-ic svg{width:18px;height:18px;fill:none;stroke:var(--sage-deep);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .secrow.i-apr .sr-ic{background:var(--apricot-soft)}
+  .secrow.i-apr .sr-ic svg{stroke:var(--apricot)}
+  .secrow.i-terra .sr-ic{background:var(--terra-soft)}
+  .secrow.i-terra .sr-ic svg{stroke:var(--terra-deep)}
+  .secrow .sr-t{flex:1;min-width:0;font-size:1rem;font-weight:600}
+  .secrow .sr-ch{flex:none;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
+  .prof-foot{text-align:center;font-family:"Caveat",cursive;color:var(--muted);font-size:1.1rem;margin:18px 0 2px}
 
   /* ——— дневник: лента по датам + фильтры (§7.5) ——— */
   .chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
@@ -579,7 +690,7 @@
   input[type="range"]{accent-color:var(--sage-deep);height:28px}
 
   @media print {
-    .top, .foot, .iconbtn, .tabbar, .fab, .sheet-wrap, .bg { display:none !important; }
+    .top, .foot, .iconbtn, .tabbar, .sheet-wrap, .bg, .bell { display:none !important; }
     .screen:not(.active) { display:none !important; }
     .screen.active { display:block !important; }
     body { background:#fff; }
@@ -608,25 +719,16 @@
   .tabbar[hidden]{display:none}
   .tab{
     flex:1;min-width:0;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
     background:none;border:0;padding:6px 2px;
     color:var(--muted);font-size:.6875rem;font-weight:600;letter-spacing:.01em;
     cursor:pointer;
   }
-  .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .tab .tab-i{width:52px;height:30px;border-radius:12px;display:grid;place-items:center;transition:background .15s ease}
+  .tab svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
   .tab.sel{color:var(--sage-deep)}
+  .tab.sel .tab-i{background:var(--sage-soft)}
   .tab:active{opacity:.55}
-  .fab{
-    position:absolute;left:50%;top:-24px;transform:translateX(-50%);
-    width:58px;height:58px;border-radius:50%;
-    border:4px solid var(--cream);
-    background:var(--sage);color:#fff;
-    font-size:30px;font-weight:400;line-height:1;
-    display:grid;place-items:center;
-    box-shadow:0 8px 20px rgba(88,113,91,.4);
-    cursor:pointer;
-  }
-  .fab:active{transform:translateX(-50%) scale(.94);background:var(--sage-deep)}
   /* запас снизу — точное значение проставляет fitFootPad() из JS,
      здесь только грубый фолбэк на случай, если скрипт ещё не отработал */
   #app.has-tabbar .body{padding-bottom:200px}
@@ -674,20 +776,27 @@
   <svg class="paw p1" viewBox="0 0 64 64"><ellipse cx="20" cy="24" rx="6" ry="8"/><ellipse cx="34" cy="18" rx="6" ry="8"/><ellipse cx="47" cy="26" rx="6" ry="8"/><path d="M33 33c-9 0-15 7-15 14 0 5 4 8 9 8 3 0 5-1.5 6-1.5s3 1.5 6 1.5c5 0 9-3 9-8 0-7-6-14-15-14z"/></svg>
   <svg class="paw p2" viewBox="0 0 64 64"><ellipse cx="20" cy="24" rx="6" ry="8"/><ellipse cx="34" cy="18" rx="6" ry="8"/><ellipse cx="47" cy="26" rx="6" ry="8"/><path d="M33 33c-9 0-15 7-15 14 0 5 4 8 9 8 3 0 5-1.5 6-1.5s3 1.5 6 1.5c5 0 9-3 9-8 0-7-6-14-15-14z"/></svg>
   <svg class="paw p3" viewBox="0 0 64 64"><ellipse cx="20" cy="24" rx="6" ry="8"/><ellipse cx="34" cy="18" rx="6" ry="8"/><ellipse cx="47" cy="26" rx="6" ry="8"/><path d="M33 33c-9 0-15 7-15 14 0 5 4 8 9 8 3 0 5-1.5 6-1.5s3 1.5 6 1.5c5 0 9-3 9-8 0-7-6-14-15-14z"/></svg>
+  <svg class="paw p4" viewBox="0 0 64 64"><ellipse cx="20" cy="24" rx="6" ry="8"/><ellipse cx="34" cy="18" rx="6" ry="8"/><ellipse cx="47" cy="26" rx="6" ry="8"/><path d="M33 33c-9 0-15 7-15 14 0 5 4 8 9 8 3 0 5-1.5 6-1.5s3 1.5 6 1.5c5 0 9-3 9-8 0-7-6-14-15-14z"/></svg>
+  <svg class="paw p5" viewBox="0 0 64 64"><ellipse cx="20" cy="24" rx="6" ry="8"/><ellipse cx="34" cy="18" rx="6" ry="8"/><ellipse cx="47" cy="26" rx="6" ry="8"/><path d="M33 33c-9 0-15 7-15 14 0 5 4 8 9 8 3 0 5-1.5 6-1.5s3 1.5 6 1.5c5 0 9-3 9-8 0-7-6-14-15-14z"/></svg>
+  <svg class="heart hh1" viewBox="0 0 24 24"><path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 7 4.5C19 15.65 12 20 12 20z"/></svg>
+  <svg class="heart hh2" viewBox="0 0 24 24"><path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 7 4.5C19 15.65 12 20 12 20z"/></svg>
+  <svg class="heart hh3" viewBox="0 0 24 24"><path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 7 4.5C19 15.65 12 20 12 20z"/></svg>
 </div>
 <div id="app">
 
   <!-- ═══ 1. ПРОФИЛЬ / ЛИЧНАЯ НОРМА ═══ -->
   <section class="screen" id="s-setup">
     <div class="top">
-      <button class="iconbtn" id="setupBack" hidden aria-label="Назад">
+      <button class="iconbtn" id="setupBack" style="visibility:hidden" aria-label="Назад">
         <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
       </button>
       <div>
         <h1 id="setupTitle">Миша</h1>
-        <div class="sub" id="setupSub">профиль и личная норма</div>
+        <div class="sub" id="setupSub" hidden>профиль и личная норма</div>
       </div>
-      <div class="spacer"></div>
+      <button class="iconbtn" id="setupGear" aria-label="О приложении">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 12.9a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-2.74 1.15V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-2.74-1.15l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 12.9H4a2 2 0 1 1 0-4h.11A1.6 1.6 0 0 0 5.26 6.16l-.06-.06A2 2 0 1 1 8.03 3.27l.06.06a1.6 1.6 0 0 0 2.74-1.15V2a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 2.74 1.15l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-1.15 2.74H20a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.96z"/></svg>
+      </button>
       <button class="iconbtn" id="setupClose" hidden aria-label="Закрыть">
         <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
@@ -697,19 +806,34 @@
       <!-- ОБЗОР -->
       <div id="setupOverview">
         <div class="prof-hero">
-          <button class="prof-photo" id="photoBtn" type="button" aria-label="Фото Миши">
-            <img id="photoImg" alt="Фото Миши" hidden>
-            <span id="photoPlaceholder">＋ фото</span>
-          </button>
+          <div class="prof-photo-wrap">
+            <button class="prof-photo" id="photoBtn" type="button" aria-label="Фото Миши">
+              <img id="photoImg" alt="Фото Миши" hidden>
+              <span id="photoPlaceholder">＋ фото</span>
+            </button>
+            <button class="prof-cam" id="photoCam" type="button" aria-label="Сменить фото">
+              <svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L18 8h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg>
+            </button>
+          </div>
           <input type="file" id="photoInput" accept="image/*" hidden>
           <div class="prof-id">
             <div class="prof-name" id="profName">Миша</div>
             <div class="prof-meta" id="profMeta"></div>
+            <div class="prof-pill" id="profWeight" hidden></div>
+            <div class="prof-bubble" id="profBubble" hidden></div>
           </div>
         </div>
         <div class="prof-photo-hint" id="photoHint" hidden>нажмите на фото, чтобы поставить своё</div>
-        <div class="note">Мы сравниваем самочувствие не с «идеальной собакой», а с тем, как обычно бывает именно у него. Привычная хромота или редкий пропуск еды — не повод для тревоги.</div>
-        <div class="secnav" id="setupSecNav"></div>
+
+        <div class="stat-row" id="profStats"></div>
+
+        <div class="secgroup">О Мише</div>
+        <div class="seccard" id="setupSecNav"></div>
+
+        <div class="secgroup">Забота и настройки</div>
+        <div class="seccard" id="setupSecCare"></div>
+
+        <div class="prof-foot">Всё важное о Мишеньке — в одном месте 🤍</div>
         <button class="btn quiet" id="aboutBtn" type="button" hidden>О программе</button>
       </div>
 
@@ -867,36 +991,46 @@
   <!-- ═══ 2. ГЛАВНЫЙ ЭКРАН ═══ -->
   <section class="screen" id="s-home">
     <div class="body">
-      <div class="greet">
-        <div class="greet-hi" id="homeGreet">Здравствуйте</div>
-        <div class="greet-sub" id="homeGreetSub"></div>
+      <div class="home-top">
+        <div class="grow">
+          <div class="greet-hi" id="homeGreet">Здравствуйте</div>
+          <div class="greet-sub" id="homeGreetSub"></div>
+        </div>
+        <button class="bell" id="homeBell" type="button" aria-label="Напоминания">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="dot" id="homeBellDot" hidden></span>
+        </button>
       </div>
 
-      <div class="hero" id="homeHero"></div>
+      <div class="hero2" id="homeHero"></div>
 
-      <div class="statuscard" id="homeLast"></div>
+      <div class="ask-card" id="homeAsk">
+        <div class="ask-hd">
+          <span class="ask-ic"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 7 4.5C19 15.65 12 20 12 20z"/></svg></span>
+          <div>
+            <div class="ask-q">Как там наш мальчик?</div>
+            <div class="ask-h">Спокойно отметим, как он себя чувствует.</div>
+          </div>
+        </div>
+        <div class="ask-btns">
+          <button class="btn primary" id="startCheck" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="10" r="1.7"/><circle cx="12" cy="7.7" r="1.7"/><circle cx="16.5" cy="10" r="1.7"/><path d="M12 12.5c-2.5 0-4.3 2-4.3 4 0 1.5 1.2 2.2 2.5 2.2.9 0 1.3-.4 1.8-.4s.9.4 1.8.4c1.3 0 2.5-.7 2.5-2.2 0-2-1.8-4-4.3-4z"/></svg>
+            <span id="startCheckLbl">Проверить Мишу</span>
+          </button>
+          <button class="btn warn" id="startQuick" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 15.5s1.3-1.6 3.5-1.6 3.5 1.6 3.5 1.6"/><path d="M9 10h.01M15 10h.01"/></svg>
+            <span>Мне что-то не нравится</span>
+          </button>
+        </div>
+      </div>
 
-      <section class="today" id="homeTodayCard">
+      <section class="today2" id="homeTodayCard">
         <h3>Сегодня</h3>
         <div id="homeSched"></div>
         <div class="today-empty" id="homeTodayEmpty" hidden>На сегодня ничего не запланировано.</div>
       </section>
 
-      <div class="miniact" id="homeMini"></div>
-
-      <details class="disclosure" id="homeNormWrap">
-        <summary>Личная норма Миши</summary>
-        <div class="note" id="homeNorm"></div>
-      </details>
-
-      <div class="ask">
-        <div class="ask-q">Как там наш мальчик?</div>
-        <div class="ask-h">Спокойно отметим, как он себя чувствует.</div>
-      </div>
-    </div>
-    <div class="foot">
-      <button class="btn primary" id="startCheck">Проверить Мишу</button>
-      <button class="btn warn" id="startQuick">Мне что-то не нравится</button>
+      <div class="big-actions" id="homeBig"></div>
     </div>
   </section>
 
@@ -1132,22 +1266,21 @@
   <!-- ═══ Нижняя навигация (§6) ═══ -->
   <nav class="tabbar" id="tabbar" hidden>
     <button class="tab" id="tabHome" type="button">
-      <svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19h12v-8.5"/></svg>
+      <span class="tab-i"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19h12v-8.5"/></svg></span>
       <span>Сегодня</span>
     </button>
     <button class="tab" id="tabDiary" type="button">
-      <svg viewBox="0 0 24 24"><path d="M5.5 4H19v16H5.5A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4z"/><path d="M8 4v16M11 9h5M11 13h5"/></svg>
+      <span class="tab-i"><svg viewBox="0 0 24 24"><path d="M5.5 4H19v16H5.5A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4z"/><path d="M8 4v16M11 9h5M11 13h5"/></svg></span>
       <span>Журнал</span>
     </button>
     <button class="tab" id="tabCal" type="button">
-      <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>
+      <span class="tab-i"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg></span>
       <span>Календарь</span>
     </button>
     <button class="tab" id="tabMisha" type="button">
-      <svg viewBox="0 0 24 24"><circle cx="7.5" cy="10" r="1.9"/><circle cx="12" cy="7.5" r="1.9"/><circle cx="16.5" cy="10" r="1.9"/><path d="M12 12.5c-2.6 0-4.4 2-4.4 4.1 0 1.5 1.2 2.3 2.6 2.3.9 0 1.3-.4 1.8-.4s.9.4 1.8.4c1.4 0 2.6-.8 2.6-2.3 0-2.1-1.8-4.1-4.4-4.1z"/></svg>
+      <span class="tab-i"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="10" r="1.9"/><circle cx="12" cy="7.5" r="1.9"/><circle cx="16.5" cy="10" r="1.9"/><path d="M12 12.5c-2.6 0-4.4 2-4.4 4.1 0 1.5 1.2 2.3 2.6 2.3.9 0 1.3-.4 1.8-.4s.9.4 1.8.4c1.4 0 2.6-.8 2.6-2.3 0-2.1-1.8-4.1-4.4-4.1z"/></svg></span>
       <span>Миша</span>
     </button>
-    <button class="fab" id="fab" type="button" aria-label="Быстрая запись">+</button>
   </nav>
 
   <!-- ═══ Быстрые действия — ＋ (§6, §7.1) ═══ -->
@@ -1999,16 +2132,28 @@ var setupView = "nav";       /* "nav" — обзор, иначе ключ под
 var setupOnboarding = false; /* первый запуск: показываем сразу «Основное», без обзора */
 
 /* §7.10 — подразделы профиля. Ключ about — не форма, открывает s-about. */
+var SETUP_ICONS = {
+  basic:  '<svg viewBox="0 0 24 24"><circle cx="7" cy="9" r="1.7"/><circle cx="12" cy="7" r="1.7"/><circle cx="17" cy="9" r="1.7"/><path d="M12 12c-3 0-5 2.4-5 4.6 0 1.6 1.3 2.3 2.7 2.3 1 0 1.4-.4 2.3-.4s1.3.4 2.3.4c1.4 0 2.7-.7 2.7-2.3C17 14.4 15 12 12 12z"/></svg>',
+  norm:   '<svg viewBox="0 0 24 24"><path d="M6 20v-7M12 20V6M18 20v-4"/></svg>',
+  chronic:'<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 7 4.5C19 15.65 12 20 12 20z"/></svg>',
+  food:   '<svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-16 0z"/><path d="M12 11V4M9 6c0-1.4 1-2 3-2s3 .6 3 2"/></svg>',
+  limp:   '<svg viewBox="0 0 24 24"><path d="M4 8c1-2 3-3 5-3l2 3h4l3-2 2 2-1 4-3 1v5h-3v-4H9v4H6v-6L4 12z"/></svg>',
+  clinics:'<svg viewBox="0 0 24 24"><path d="M6 3v6a4 4 0 0 0 8 0V3M6 3H4M14 3h2M10 17v2a3 3 0 0 0 6 0v-1"/><circle cx="18" cy="15" r="2"/></svg>',
+  remind: '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+  data:   '<svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A3.5 3.5 0 0 1 18 18z"/></svg>',
+  about:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></svg>',
+  weight: '<svg viewBox="0 0 24 24"><path d="M5 8h14l1.4 12H3.6z"/><path d="M8.5 8a3.5 3.5 0 0 1 7 0"/></svg>'
+};
 var SETUP_SECTIONS = [
-  { k:"basic",   t:"Основное",              d:"кличка, порода, вес, возраст" },
-  { k:"norm",    t:"Личная норма",          d:"температура, дыхание, качество жизни" },
-  { k:"chronic", t:"Хронические состояния", d:"диагнозы, аллергии, лечащий врач" },
-  { k:"food",    t:"Питание и ЖКТ",         d:"порции, пропуски еды, стул" },
-  { k:"limp",    t:"Движение и хромота",    d:"обычная хромота и лапа" },
-  { k:"clinics", t:"Врачи и клиники",       d:"куда звонить в экстренном случае" },
-  { k:"remind",  t:"Напоминания",           d:"расписание проверок и обработок" },
-  { k:"data",    t:"Данные и копия",        d:"резервная копия, удаление" },
-  { k:"about",   t:"О приложении",          d:"что делает, чего не делает, дисклеймер" }
+  { k:"basic",   t:"Основное",                 g:1, ic:"basic" },
+  { k:"norm",    t:"Личная норма",             g:1, ic:"norm" },
+  { k:"chronic", t:"Хронические состояния",    g:1, ic:"chronic", cls:"i-apr" },
+  { k:"food",    t:"Питание и ЖКТ",            g:1, ic:"food" },
+  { k:"limp",    t:"Движение и хромота",       g:1, ic:"limp" },
+  { k:"clinics", t:"Врачи и клиники",          g:2, ic:"clinics" },
+  { k:"remind",  t:"Напоминания",              g:2, ic:"remind", cls:"i-apr" },
+  { k:"data",    t:"Данные и резервная копия", g:2, ic:"data" },
+  { k:"about",   t:"О приложении",             g:2, ic:"about" }
 ];
 var SECTION_TITLES = (function(){ var m = {}; SETUP_SECTIONS.forEach(function(s){ m[s.k] = s.t; }); return m; })();
 
@@ -2016,20 +2161,20 @@ function setVal(id, v){ var n = $("#"+id); if(n) n.value = (v === null || v === 
 function getVal(id){ var n = $("#"+id); return n ? n.value.trim() : ""; }
 
 function renderSetupSecNav(){
-  var box = $("#setupSecNav");
-  clear(box);
+  var g1 = $("#setupSecNav"), g2 = $("#setupSecCare");
+  clear(g1); clear(g2);
   SETUP_SECTIONS.forEach(function(s){
-    var b = el("button", ""); b.type = "button";
-    var col = el("div", "sn-col");
-    col.appendChild(el("div", "sn-t", s.t));
-    col.appendChild(el("div", "sn-d", s.d));
-    b.appendChild(col);
-    b.appendChild(el("i", "sn-ch"));
+    var b = el("button", "secrow" + (s.cls ? " " + s.cls : ""));
+    b.type = "button";
+    var ic = el("span", "sr-ic"); ic.innerHTML = SETUP_ICONS[s.ic] || "";
+    b.appendChild(ic);
+    b.appendChild(el("span", "sr-t", s.t));
+    b.appendChild(el("i", "sr-ch"));
     b.addEventListener("click", function(){
       if(s.k === "about"){ $("#aboutBtn").click(); return; }
       openSetupSection(s.k);
     });
-    box.appendChild(b);
+    (s.g === 2 ? g2 : g1).appendChild(b);
   });
 }
 
@@ -2038,9 +2183,36 @@ function renderSetupHero(){
   var bits = [];
   var br = getVal("dogBreed"); if(br) bits.push(br);
   if(draft.sex === "m") bits.push("мальчик"); else if(draft.sex === "f") bits.push("девочка");
-  var wt = getVal("dogWeight"); if(wt) bits.push(wt.replace(",", ".") + " кг");
   var age = dogAgeText(getVal("dogBirth")); if(age) bits.push(age);
   $("#profMeta").textContent = bits.join(" · ");
+
+  var wt = getVal("dogWeight");
+  var wp = $("#profWeight");
+  if(wt){ wp.hidden = false; wp.innerHTML = SETUP_ICONS.basic + wt.replace(",", ".") + " кг"; }
+  else wp.hidden = true;
+
+  var bub = $("#profBubble");
+  bub.hidden = false;
+  bub.textContent = "Самый любимый мальчик 🤍";
+
+  /* три плитки: Вес · Норма · Врач */
+  var stats = $("#profStats");
+  clear(stats);
+  function stat(cls, ico, k, v, onTap){
+    var c = el("button", "stat-card " + cls); c.type = "button";
+    var i = el("span", "sc-ic"); i.innerHTML = ico; c.appendChild(i);
+    c.appendChild(el("span", "sc-k", k));
+    c.appendChild(el("span", "sc-v", v));
+    c.addEventListener("click", onTap);
+    stats.appendChild(c);
+  }
+  var normSet = !!(getVal("normTemp") || draft.trackSRR || draft.trackQoL || draft.limpNorm > 0 || draft.skips > 0);
+  stat("c-w", SETUP_ICONS.weight, "Вес", wt ? (wt.replace(",", ".") + " кг") : "—",
+    function(){ renderWeight(); show("s-weight"); });
+  stat("c-n", SETUP_ICONS.norm, "Норма", normSet ? "настроена" : "по умолчанию",
+    function(){ openSetupSection("norm"); });
+  stat("c-v", SETUP_ICONS.clinics, "Врач", getVal("clinicName") || getVal("dogVet") || "—",
+    function(){ openSetupSection("clinics"); });
 }
 
 function openSetupSection(key){
@@ -2053,9 +2225,12 @@ function openSetupSection(key){
   var ft = document.querySelector("#s-setup .foot");
   if(ft) ft.hidden = isNav;
   $("#setupSave").hidden = isNav;
-  $("#setupBack").hidden = isNav || setupOnboarding;
+  $("#setupBack").style.visibility = (isNav || setupOnboarding) ? "hidden" : "visible";
+  var gear = $("#setupGear"); if(gear) gear.style.visibility = isNav ? "visible" : "hidden";
   $("#setupTitle").textContent = isNav ? "Миша" : (SECTION_TITLES[key] || "Профиль");
-  $("#setupSub").textContent = isNav ? "профиль и личная норма" : "изменить и сохранить";
+  var sub = $("#setupSub");
+  sub.hidden = isNav;
+  sub.textContent = isNav ? "" : "изменить и сохранить";
   window.scrollTo(0, 0);
   fitFootPad(document.getElementById("s-setup"));
 }
@@ -2260,6 +2435,8 @@ $("#qolToggle").addEventListener("click", function(){
 });
 
 $("#photoBtn").addEventListener("click", function(){ $("#photoInput").click(); });
+$("#photoCam").addEventListener("click", function(){ $("#photoInput").click(); });
+$("#setupGear").addEventListener("click", function(){ $("#aboutBtn").click(); });
 $("#photoImg").addEventListener("error", function(){
   if(draft.photo && draft.photo.indexOf("data:") === 0) return;   /* битый data: — не трогаем */
   draft.photo = null;
@@ -2329,7 +2506,6 @@ function closeQuickSheet(){
   s.classList.remove("in");
   window.setTimeout(function(){ if(!s.classList.contains("in")) s.hidden = true; }, 240);
 }
-$("#fab").addEventListener("click", openQuickSheet);
 $("#quickSheetBg").addEventListener("click", closeQuickSheet);
 $("#qaCheck").addEventListener("click", function(){ closeQuickSheet(); startCheck(); });
 $("#qaWalk").addEventListener("click", function(){ closeQuickSheet(); startWalk(); });
@@ -2474,6 +2650,15 @@ function pad2(n){ return (n < 10 ? "0" : "") + n; }
 
 /* Единый блок «Сегодня» (§7.1): плановые проверки по времени + дела из календаря
    на сегодня и просроченные + повторная проверка + недельная оценка качества жизни. */
+var TICO = {
+  check: '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+  pill:  '<svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6" rx="3"/><path d="M12 9v6"/></svg>',
+  lab:   '<svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 7 4.5C19 15.65 12 20 12 20z"/></svg>',
+  bars:  '<svg viewBox="0 0 24 24"><path d="M6 20v-7M12 20V6M18 20v-4"/></svg>',
+  paw:   '<svg viewBox="0 0 24 24"><circle cx="7" cy="9" r="1.6"/><circle cx="12" cy="7" r="1.6"/><circle cx="17" cy="9" r="1.6"/><path d="M12 12c-3 0-5 2.4-5 4.5 0 1.6 1.3 2.3 2.7 2.3 1 0 1.4-.4 2.3-.4s1.3.4 2.3.4c1.4 0 2.7-.7 2.7-2.3C17 14.4 15 12 12 12z"/></svg>'
+};
+
 function renderTodayList(){
   var sched = $("#homeSched");
   if(!sched) return;
@@ -2482,47 +2667,52 @@ function renderTodayList(){
   var lastTs = 0;
   for(var i = 0; i < entries.length; i++){ if(entries[i].type !== "walk"){ lastTs = entries[i].ts; break; } }
 
-  function addRow(t, lbl, pillText, pillCls){
-    var r = el("div", "sched-row");
-    r.appendChild(el("span", "t", t || "·"));
-    r.appendChild(el("span", "lbl", lbl));
-    if(pillText) r.appendChild(el("span", "pill" + (pillCls ? " " + pillCls : ""), pillText));
+  function pill(txt, cls){ return el("span", "pill" + (cls ? " " + cls : ""), txt); }
+  function trow(time, icHtml, icCls, lbl, right, onTap, extraCls){
+    var r = el(onTap ? "button" : "div", "trow" + (onTap ? " tap" : "") + (extraCls ? " " + extraCls : ""));
+    if(onTap) r.type = "button";
+    r.appendChild(el("span", "tr-time", time || ""));
+    var ic = el("span", "tr-ic" + (icCls ? " " + icCls : ""));
+    if(icHtml) ic.innerHTML = icHtml;
+    r.appendChild(ic);
+    r.appendChild(el("span", "tr-lbl", lbl));
+    var rc = el("span", "tr-right");
+    rc.appendChild(right || el("i", "tr-chev"));
+    r.appendChild(rc);
+    if(onTap) r.addEventListener("click", onTap);
     sched.appendChild(r);
   }
 
-  /* Укус клеща — активное наблюдение: важно, показываем каждый день с номером дня (§7.8) */
+  /* Укус клеща — активное наблюдение, важно, каждый день (§7.8) */
   (Array.isArray(ticks) ? ticks : []).forEach(function(t){
     var day = tickControlDay(t);
     if(day < 1 || day > TICK_CONTROL_DAYS) return;
-    var r = el("button", "sched-row tick tap");
-    r.type = "button";
-    r.appendChild(el("span", "lbl", "Наблюдение после укуса клеща"));
-    r.appendChild(el("span", "pill", "день " + day + " из " + TICK_CONTROL_DAYS));
-    r.addEventListener("click", function(){ show("s-tick"); openTickForm(t); });
-    sched.appendChild(r);
+    trow("", TICO.paw, "warn", "Наблюдение после укуса клеща",
+      pill("день " + day + " из " + TICK_CONTROL_DAYS, "due"),
+      function(){ show("s-tick"); openTickForm(t); }, "tick-row");
   });
 
-  var SLOT_GRACE_MS = 30 * 60 * 1000;   /* проверка максимум за полчаса до срока засчитывается за слот */
+  var SLOT_GRACE_MS = 30 * 60 * 1000;
   scheduleTimes().forEach(function(t){
     var due = dueAt(new Date(), t).getTime();
     var startsAt = due - SLOT_GRACE_MS;
-    var pt = "", pc = "";
-    if(now < startsAt){
-      /* слот ещё впереди — без пометки, даже если сегодня уже проверяли */
-    }else if(lastTs >= startsAt){
-      pt = "отмечено"; pc = "ok";
+    var lbl = "Проверка · " + t.label;
+    var tm = pad2(t.h) + ":" + pad2(t.m);
+    if(now >= startsAt && lastTs >= startsAt){
+      trow(tm, TICO.check, "done", lbl, pill("Выполнено", "ok"), null);
     }else if(now >= due && now < due + WINDOW_MS){
-      pt = "сейчас"; pc = "due";
+      trow(tm, "", "", lbl, pill("сейчас", "due"), function(){ startCheck(); });
     }else if(now >= due + WINDOW_MS){
-      pt = "можно пропустить"; pc = "";
+      trow(tm, "", "", lbl, pill("можно пропустить", ""), function(){ startCheck(); });
+    }else{
+      trow(tm, "", "", lbl, null, function(){ startCheck(); });
     }
-    addRow(pad2(t.h) + ":" + pad2(t.m), "Проверка · " + t.label, pt, pc);
   });
 
   var rem = load(KEY_REMINDER, null);
   if(rem && rem.at){
-    if(rem.at > now) addRow("", "Повторная проверка после " + fmtTime.format(new Date(rem.at)), "", "");
-    else addRow("", "Пора повторить проверку", "сейчас", "due");
+    if(rem.at > now) trow("", "", "", "Повторная проверка после " + fmtTime.format(new Date(rem.at)), null, function(){ startCheck(); });
+    else trow("", "", "", "Пора повторить проверку", pill("сейчас", "due"), function(){ startCheck(); });
   }
 
   calendarItems().forEach(function(it){
@@ -2530,26 +2720,29 @@ function renderTodayList(){
     var n = dayDiff(it.date);
     if(n === null || n > 0 || n < -14) return;
     var over = n < 0;
-    var pt, pc;
-    if(it.kind === "lab"){ pt = over ? "не отмечено" : "анализ"; pc = over ? "over" : "due"; }
-    else if(it.kind === "visit"){ pt = over ? "не отмечено" : "визит"; pc = over ? "over" : "due"; }
-    else { pt = over ? "не отмечено" : "дать"; pc = over ? "over" : "due"; }
-    addRow("", it.title, pt, pc);
+    var ico, pt, pc, tap;
+    if(it.kind === "lab"){ ico = TICO.lab; pt = over ? "не отмечено" : "анализ"; pc = over ? "over" : "due"; tap = function(){ renderCalendar(); show("s-calendar"); }; }
+    else if(it.kind === "visit"){ ico = TICO.heart; pt = over ? "не отмечено" : "визит"; pc = over ? "over" : "due"; tap = function(){ if(it.ref) openVisitForm(it.ref, {}); else { renderCalendar(); show("s-calendar"); } }; }
+    else { ico = TICO.pill; pt = over ? "не отмечено" : "дать"; pc = over ? "over" : "due"; tap = function(){ show("s-meds"); if(it.ref) openMedForm(it.ref); }; }
+    trow("", ico, "kind", it.title, pill(pt, pc), tap);
   });
 
   if(profile && profile.trackQoL && qolDueThisWeek()){
-    addRow("", "Качество жизни — недельная оценка", "на неделе", "due");
+    trow("", TICO.bars, "kind", "Качество жизни — недельная оценка", pill("на неделе", "due"),
+      function(){ renderQol(); show("s-qol"); });
   }
+
+  /* всегда — быстрый вход «После прогулки» */
+  trow("", TICO.paw, "kind", "После прогулки", null, function(){ startWalk(); });
 
   $("#homeTodayEmpty").hidden = sched.children.length > 0;
 }
 
 function updateStartButton(){
-  var b = $("#startCheck");
-  if(!b) return;
+  var lbl = $("#startCheckLbl");
+  if(!lbl) return;
   var w = openWindow();
-  if(w && w.done){ b.className = "btn soft"; b.textContent = "Проверить ещё раз"; }
-  else { b.className = "btn primary"; b.textContent = "Проверить Мишу"; }
+  lbl.textContent = (w && w.done) ? "Проверить ещё раз" : "Проверить Мишу";
 }
 
 function notifyReady(){
@@ -2758,94 +2951,77 @@ function renderHome(){
   var last = null;
   for(var li = 0; li < entries.length; li++){ if(entries[li].type !== "walk"){ last = entries[li]; break; } }
 
-  /* §9: при жёлтом и красном — без милых фраз и лишнего декора */
+  /* §9: при жёлтом и красном — без милых фраз */
   var calm = !!(last && (last.status === "red" || last.status === "yellow"));
   if(calm) sec.classList.add("calm"); else sec.classList.remove("calm");
 
-  $("#homeGreet").textContent = greetLine();
+  var gh = $("#homeGreet");
+  clear(gh);
+  gh.appendChild(document.createTextNode(greetLine()));
+  gh.appendChild(el("span", "hrt", "♡"));
   var gs = $("#homeGreetSub");
-  if(!last) gs.textContent = "Сегодня просто посмотрим, как Миша себя чувствует.";
-  else if(last.status === "green") gs.textContent = "Сегодня с Мишей всё спокойно.";
-  else if(last.status === "neutral") gs.textContent = "Последняя проверка осталась неполной.";
-  else if(last.status === "yellow") gs.textContent = "По последней проверке есть отличия от нормы.";
-  else gs.textContent = "По последней проверке нужен врач.";
+  if(!last) gs.textContent = "Сегодня просто посмотрим, как он себя чувствует";
+  else if(last.status === "green") gs.textContent = "Сегодня с Мишей всё спокойно";
+  else if(last.status === "neutral") gs.textContent = "Последняя проверка осталась неполной";
+  else if(last.status === "yellow") gs.textContent = "По последней проверке есть отличия от нормы";
+  else gs.textContent = "По последней проверке нужен врач";
 
-  /* герой: фото + имя + порода · пол · вес · возраст */
+  /* колокольчик: точка при просрочках или активном напоминании */
+  var rem = load(KEY_REMINDER, null);
+  var overdue = false;
+  try{
+    overdue = calendarItems().some(function(it){
+      if(it.done || it.kind === "check") return false;
+      var n = dayDiff(it.date);
+      return n !== null && n < 0 && n >= -14;
+    });
+  }catch(e){}
+  $("#homeBellDot").hidden = !(overdue || (rem && rem.at));
+
+  /* герой: фото слева + имя / «N кг · под присмотром» / последняя проверка / бабл статуса */
   var hero = $("#homeHero");
   clear(hero);
-  var heroSrc = p.photo || PHOTOS.home;
-  if(heroSrc){
-    var im = el("img", "avatar");
-    im.src = heroSrc;
-    im.alt = "Фото " + (p.name || "Миша");
-    im.addEventListener("error", function(){
-      if(!im.parentNode) return;
-      var ph = el("div", "avatar ph"); ph.innerHTML = DOG_GLYPH;
-      im.parentNode.insertBefore(ph, im); im.parentNode.removeChild(im);
-    });
-    hero.appendChild(im);
-  }else{
-    var phe = el("div", "avatar ph"); phe.innerHTML = DOG_GLYPH;
-    hero.appendChild(phe);
-  }
-  var hcol = el("div", "hcol");
-  hcol.appendChild(el("div", "name", p.name || "Миша"));
-  var bits = [];
-  if(p.breed) bits.push(p.breed);
-  if(p.sex === "m") bits.push("мальчик"); else if(p.sex === "f") bits.push("девочка");
-  if(p.weight) bits.push(String(p.weight).replace(",", ".") + " кг");
-  var age = dogAgeText(p.birth);
-  if(age) bits.push(age);
-  hcol.appendChild(el("div", "caption", bits.join(" · ")));
-  hero.appendChild(hcol);
+  var im = el("img", "h-photo");
+  im.src = p.photo || PHOTOS.home;
+  im.alt = "Фото " + (p.name || "Миша");
+  im.addEventListener("error", function(){
+    if(!im.parentNode) return;
+    var ph = el("div", "h-photo ph"); ph.innerHTML = DOG_GLYPH;
+    im.parentNode.insertBefore(ph, im); im.parentNode.removeChild(im);
+  });
+  hero.appendChild(im);
 
-  /* карточка последней проверки — статус + короткое резюме */
-  var box = $("#homeLast");
-  clear(box);
-  box.className = "statuscard";
-  if(last && last.status === "red") box.classList.add("tone-red");
-  else if(last && last.status === "yellow") box.classList.add("tone-yellow");
-  if(!last){
-    box.appendChild(el("div", "title", "Проверок пока не было"));
-    box.appendChild(el("div", "sum", "Первая проверка займёт минуту — по одному вопросу на экран."));
-  }else{
-    var row = el("div", "row");
-    row.appendChild(el("div", "status-dot s-" + last.status));
-    row.appendChild(el("div", "title", STATUS_TEXT[last.status].title));
-    row.appendChild(el("div", "when", whenText(last.ts)));
-    box.appendChild(row);
-    var reasons = last.red.concat(last.yellow);
-    var sum;
-    if(reasons.length) sum = reasons.slice(0, 2).join("; ") + (reasons.length > 2 ? " и ещё " + (reasons.length - 2) : "");
-    else if(last.status === "neutral") sum = "Часть показателей осталась непроверенной.";
-    else sum = "Ничего необычного для него не отмечено.";
-    box.appendChild(el("div", "sum", sum));
-  }
+  var col = el("div", "h-col");
+  col.appendChild(el("div", "h-name", p.name || "Миша"));
+  var hm = [];
+  if(p.weight) hm.push(String(p.weight).replace(",", ".") + " кг");
+  hm.push("под присмотром");
+  col.appendChild(el("div", "h-meta", hm.join(" · ")));
+  col.appendChild(el("div", "h-last", last ? ("Последняя проверка · " + whenText(last.ts)) : "Проверок пока не было"));
 
-  /* личная норма — в сворачиваемом блоке (§7.1) */
-  var norm = $("#homeNorm");
-  clear(norm);
-  var normBits = [];
-  normBits.push("хромота " + p.limpNorm + (p.limpNorm > 0 ? " (" + pawLabel(p.limpPaw).toLowerCase() + ")" : ""));
-  normBits.push("пропуски еды: " + (p.skips === 0 ? "не бывает" : "до " + p.skips));
-  if(p.tempNorm != null) normBits.push("температура " + p.tempNorm + " °C");
-  if(p.trackSRR && p.srrNorm != null) normBits.push("дыхание " + p.srrNorm + " вд./мин");
-  norm.appendChild(document.createTextNode(normBits.join(", ") + ". С ней и сравниваем."));
+  var bub, bcls = "";
+  if(!last){ bub = "Начнём знакомиться поближе"; bcls = "b-neutral"; }
+  else if(last.status === "green") bub = "Всё по-мишенному спокойно ♡";
+  else if(last.status === "neutral"){ bub = "Проверка осталась неполной"; bcls = "b-neutral"; }
+  else if(last.status === "yellow"){ bub = "Стоит понаблюдать за ним сегодня"; bcls = "b-yellow"; }
+  else { bub = "Нужен врач — не откладывайте"; bcls = "b-red"; }
+  col.appendChild(el("div", "h-bubble" + (bcls ? " " + bcls : ""), bub));
+  hero.appendChild(col);
 
-  /* компактные быстрые действия */
-  var mini = $("#homeMini");
-  clear(mini);
-  var mWalk = el("button", "btn soft", "После прогулки"); mWalk.type = "button";
-  mWalk.addEventListener("click", function(){ startWalk(); });
-  mini.appendChild(mWalk);
-  var mWeight = el("button", "btn soft", "Вес"); mWeight.type = "button";
-  mWeight.addEventListener("click", function(){ show("s-weight"); openWeightForm(null); });
-  mini.appendChild(mWeight);
-  if(p.trackQoL){
-    var mQol = el("button", "btn soft", "Качество жизни"); mQol.type = "button";
-    mQol.addEventListener("click", function(){ renderQol(); show("s-qol"); });
-    mini.appendChild(mQol);
-  }
+  /* большие действия: Вес · Качество жизни */
+  var big = $("#homeBig");
+  clear(big);
+  var baW = el("button", "ba a-weight"); baW.type = "button";
+  baW.innerHTML = '<span class="ba-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 8h14l1.4 12H3.6z"/><path d="M8.5 8a3.5 3.5 0 0 1 7 0"/></svg></span><span class="ba-t">Вес</span><i class="tr-chev"></i>';
+  baW.addEventListener("click", function(){ show("s-weight"); openWeightForm(null); });
+  big.appendChild(baW);
+  var baQ = el("button", "ba a-qol"); baQ.type = "button";
+  baQ.innerHTML = '<span class="ba-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 20V11M12 20V4M19 20v-6"/></svg></span><span class="ba-t">Качество жизни</span><i class="tr-chev"></i>';
+  baQ.addEventListener("click", function(){
+    if(p.trackQoL){ renderQol(); show("s-qol"); }
+    else { renderSetup(profile); show("s-setup"); openSetupSection("norm"); }
+  });
+  big.appendChild(baQ);
 
   renderTodayList();
   updateStartButton();
@@ -2853,6 +3029,7 @@ function renderHome(){
 
 $("#startCheck").addEventListener("click", function(){ startCheck(); });
 $("#startQuick").addEventListener("click", function(){ startQuick(); });
+$("#homeBell").addEventListener("click", function(){ renderSetup(profile); show("s-setup"); openSetupSection("remind"); });
 
 /* ══════════════════ Экран 3: проверка ══════════════════ */
 
