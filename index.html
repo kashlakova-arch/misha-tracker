@@ -555,6 +555,23 @@
   .rep h3{font-size:.8125rem;font-weight:650;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-top:6px}
   .rep .kv{display:flex;gap:8px;font-size:.9rem;line-height:1.45}
   .rep .kv b{min-width:120px;flex:none;color:var(--ink-soft)}
+
+  /* ——— отчёт ветеринару: вид документа (§7.13) ——— */
+  .doc-head{display:flex;flex-direction:column;gap:8px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+  .doc-head .dh-top{display:flex;gap:14px;align-items:center}
+  .doc-head .dh-photo{width:64px;height:64px;border-radius:16px;object-fit:cover;flex:none;border:1px solid var(--line)}
+  .doc-head h1{font-size:1.375rem;font-weight:680;letter-spacing:-.02em;line-height:1.2}
+  .doc-head .dh-meta{font-size:.85rem;color:var(--muted);line-height:1.45}
+  .doc-head .dh-sum{font-size:.9375rem;color:var(--ink-soft);line-height:1.5;margin-top:2px}
+  .doc-head .kv{display:flex;gap:8px;font-size:.875rem;line-height:1.4}
+  .doc-head .kv b{min-width:110px;flex:none;color:var(--ink-soft)}
+  .rep.doc-sec{
+    background:none;border:0;box-shadow:none;border-radius:0;margin:0;
+    border-top:1px solid var(--line);padding:14px 0 2px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .doc-head + .rep.doc-sec{border-top:0;padding-top:6px}
+  .rep.doc-sec > h3:first-child{margin-top:0}
   .spark{width:100%;height:auto;display:block;margin:2px 0 6px}
   .spark .ln{fill:none;stroke:var(--sage-deep);stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
   .spark .dot{fill:var(--sage-deep)}
@@ -5623,8 +5640,11 @@ var KEY_REPORTNOTES = "misha.reportNotes";
 var REPORT_PERIODS = [ {v:"7", label:"7 дней"}, {v:"14", label:"14 дней"}, {v:"30", label:"30 дней"}, {v:"0", label:"всё время"} ];
 var reportDraft = { days: 14, cats: { checks:true, weights:true, qol:true, walks:true, meds:true, visits:true, ticks:true, events:true, photos:true }, questions: "" };
 
+var reportStep = 0;   /* §7.13 — мастер из трёх шагов: 0 период, 1 разделы, 2 вопросы */
+
 function startReport(){
   reportDraft.questions = load(KEY_REPORTNOTES, "") || "";
+  reportStep = 0;
   renderReportSetup();
   show("s-report");
 }
@@ -5632,55 +5652,71 @@ function startReport(){
 function renderReportSetup(){
   var body = $("#reportBody"), foot = $("#reportFoot");
   clear(body); clear(foot);
-  $("#reportSub").textContent = "что включить";
+  var names = ["период", "разделы", "вопросы врачу"];
+  $("#reportSub").textContent = "шаг " + (reportStep + 1) + " из 3 · " + names[reportStep];
 
-  var pf = el("div", "field");
-  pf.appendChild(el("label", "", "Период"));
-  pf.appendChild(segControl(REPORT_PERIODS, String(reportDraft.days), function(v){ reportDraft.days = +v; }));
-  body.appendChild(pf);
-
-  var cats = [
-    {k:"checks", label:"Проверки самочувствия"},
-    {k:"weights", label:"Вес и график"},
-    {k:"qol",    label:"Качество жизни"},
-    {k:"walks",  label:"Отметки после прогулок"},
-    {k:"meds",   label:"Лекарства, обработки, прививки"},
-    {k:"visits", label:"Визиты к врачу"},
-    {k:"ticks",  label:"Укусы клеща и анализы"},
-    {k:"events", label:"Анализы и заметки"},
-    {k:"photos", label:"Фотографии"}
-  ];
-  var cf = el("div", "field");
-  cf.appendChild(el("label", "", "Разделы"));
-  cats.forEach(function(c){
-    var b = el("button", "checkline calm" + (reportDraft.cats[c.k] ? " sel" : ""));
-    b.type = "button";
-    var box = el("div", "box"); box.innerHTML = tick();
-    b.appendChild(box);
-    b.appendChild(el("span", "", c.label));
-    b.addEventListener("click", function(){
-      reportDraft.cats[c.k] = !reportDraft.cats[c.k];
-      b.classList.toggle("sel", !!reportDraft.cats[c.k]);
+  if(reportStep === 0){
+    var pf = el("div", "field");
+    pf.appendChild(el("label", "", "За какой период"));
+    pf.appendChild(el("div", "hint", "Сколько последних дней наблюдения включить в отчёт."));
+    pf.appendChild(segControl(REPORT_PERIODS, String(reportDraft.days), function(v){ reportDraft.days = +v; }));
+    body.appendChild(pf);
+  }else if(reportStep === 1){
+    var cats = [
+      {k:"checks", label:"Проверки самочувствия"},
+      {k:"weights", label:"Вес и график"},
+      {k:"qol",    label:"Качество жизни"},
+      {k:"walks",  label:"Отметки после прогулок"},
+      {k:"meds",   label:"Лекарства, обработки, прививки"},
+      {k:"visits", label:"Визиты к врачу"},
+      {k:"ticks",  label:"Укусы клеща и анализы"},
+      {k:"events", label:"Анализы и заметки"},
+      {k:"photos", label:"Фотографии"}
+    ];
+    var cf = el("div", "field");
+    cf.appendChild(el("label", "", "Что включить"));
+    cats.forEach(function(c){
+      var b = el("button", "checkline calm" + (reportDraft.cats[c.k] ? " sel" : ""));
+      b.type = "button";
+      var box = el("div", "box"); box.innerHTML = tick();
+      b.appendChild(box);
+      b.appendChild(el("span", "", c.label));
+      b.addEventListener("click", function(){
+        reportDraft.cats[c.k] = !reportDraft.cats[c.k];
+        b.classList.toggle("sel", !!reportDraft.cats[c.k]);
+      });
+      cf.appendChild(b);
     });
-    cf.appendChild(b);
-  });
-  body.appendChild(cf);
+    body.appendChild(cf);
+  }else{
+    var qf = fieldInput("Вопросы ветеринару", reportDraft.questions, {textarea:true, placeholder:"Что спросить на приёме"});
+    qf._input.addEventListener("input", function(){ reportDraft.questions = qf._input.value; });
+    body.appendChild(qf);
+    body.appendChild(el("div", "hint", "Необязательно. Список попадёт в конец отчёта отдельным блоком."));
+  }
 
-  var qf = fieldInput("Вопросы ветеринару", reportDraft.questions, {textarea:true, placeholder:"Что спросить на приёме"});
-  qf._input.addEventListener("input", function(){ reportDraft.questions = qf._input.value; });
-  body.appendChild(qf);
+  if(reportStep < 2){
+    var nextB = el("button", "btn primary", "Далее");
+    nextB.type = "button";
+    nextB.addEventListener("click", function(){ reportStep++; renderReportSetup(); });
+    foot.appendChild(nextB);
+  }else{
+    var gen = el("button", "btn primary", "Сформировать отчёт");
+    gen.type = "button";
+    gen.addEventListener("click", function(){
+      save(KEY_REPORTNOTES, reportDraft.questions);
+      renderReportView();
+    });
+    foot.appendChild(gen);
+  }
 
-  var gen = el("button", "btn primary", "Сформировать отчёт");
-  gen.type = "button";
-  gen.addEventListener("click", function(){
-    save(KEY_REPORTNOTES, reportDraft.questions);
-    renderReportView();
+  var backB = el("button", "btn quiet", reportStep === 0 ? "Назад в дневник" : "Назад");
+  backB.type = "button";
+  backB.addEventListener("click", function(){
+    if(reportStep === 0){ renderDiary(); show("s-diary"); }
+    else { reportStep--; renderReportSetup(); }
   });
-  foot.appendChild(gen);
-  var cancel = el("button", "btn quiet", "Назад");
-  cancel.type = "button";
-  cancel.addEventListener("click", function(){ renderDiary(); show("s-diary"); });
-  foot.appendChild(cancel);
+  foot.appendChild(backB);
 }
 
 function reportScope(){
@@ -5735,25 +5771,55 @@ function renderReportView(){
   var sc = reportScope();
   $("#reportSub").textContent = "готов";
 
-  var head = el("div", "card rep");
-  head.appendChild(el("h2", "", p.name + " — отчёт о наблюдении"));
-  head.appendChild(el("div", "hint",
-    (reportDraft.days ? "период: последние " + reportDraft.days + " " + plural(reportDraft.days, "день", "дня", "дней") : "период: всё время наблюдения") +
-    " · сформирован " + fmtDate.format(new Date())));
+  var head = el("div", "doc-head");
+  var dhTop = el("div", "dh-top");
+  var dhSrc = p.photo || PHOTOS.portrait;
+  if(dhSrc){
+    var dhImg = el("img", "dh-photo"); dhImg.src = dhSrc; dhImg.alt = p.name || "Миша";
+    dhImg.addEventListener("error", function(){ if(dhImg.parentNode) dhImg.parentNode.removeChild(dhImg); });
+    dhTop.appendChild(dhImg);
+  }
+  var dhCol = el("div", "grow");
+  dhCol.appendChild(el("h1", "", (p.name || "Миша") + " — отчёт о наблюдении"));
   var idBits = [];
   if(p.breed) idBits.push(p.breed);
+  if(p.sex === "m") idBits.push("мальчик"); else if(p.sex === "f") idBits.push("девочка");
   if(p.birth) idBits.push("р. " + p.birth);
-  if(p.weight) idBits.push(p.weight + " кг");
-  if(idBits.length) head.appendChild(el("div", "hint", idBits.join(" · ")));
+  if(p.weight) idBits.push(String(p.weight).replace(",", ".") + " кг");
+  if(idBits.length) dhCol.appendChild(el("div", "dh-meta", idBits.join(" · ")));
+  dhTop.appendChild(dhCol);
+  head.appendChild(dhTop);
+
+  head.appendChild(el("div", "dh-meta",
+    (reportDraft.days ? "период: последние " + reportDraft.days + " " + plural(reportDraft.days, "день", "дня", "дней") : "период: всё время наблюдения") +
+    " · сформирован " + fmtDate.format(new Date())));
+
   if(p.diagnoses) head.appendChild(kvRow("Хроническое", p.diagnoses));
   if(p.allergies) head.appendChild(kvRow("Аллергии", p.allergies));
   if(p.bannedMeds) head.appendChild(kvRow("Нельзя давать", p.bannedMeds));
+
+  var summ = [];
+  var flaggedN = sc.checks.filter(function(e){ return (e.red && e.red.length) || (e.yellow && e.yellow.length); }).length;
+  if(sc.checks.length){
+    summ.push(sc.checks.length + " " + plural(sc.checks.length, "проверка", "проверки", "проверок") +
+      (flaggedN ? (", из них " + flaggedN + " с отклонениями от нормы") : " — все в пределах его нормы"));
+  }
+  if(reportDraft.cats.weights && weights.length){
+    var wSum = weightsSorted().filter(function(w){ var t = parseDate(w.date); t = t ? t.getTime() : w.ts; return !reportDraft.days || t >= sc.since; });
+    if(wSum.length >= 2){
+      var dW = wSum[wSum.length - 1].kg - wSum[0].kg;
+      summ.push("вес " + wSum[0].kg.toFixed(1) + " → " + wSum[wSum.length - 1].kg.toFixed(1) + " кг (" + (dW > 0 ? "+" : dW < 0 ? "−" : "±") + Math.abs(dW).toFixed(1) + ")");
+    }
+  }
+  if(sc.walks.length) summ.push(sc.walks.length + " " + plural(sc.walks.length, "отметка после прогулки", "отметки после прогулок", "отметок после прогулок"));
+  if(summ.length) head.appendChild(el("div", "dh-sum", summ.join(". ") + "."));
+
   body.appendChild(head);
 
   if(reportDraft.cats.checks){
     var counts = { green:0, neutral:0, yellow:0, red:0 };
     sc.checks.forEach(function(e){ if(counts[e.status] !== undefined) counts[e.status]++; });
-    var cc = el("div", "card rep");
+    var cc = el("div", "rep doc-sec");
     cc.appendChild(el("h3", "", "Проверки самочувствия"));
     cc.appendChild(el("div", "", "Всего: " + sc.checks.length + " · зелёных " + counts.green +
       " · неполных " + counts.neutral + " · жёлтых " + counts.yellow + " · красных " + counts.red));
@@ -5799,7 +5865,7 @@ function renderReportView(){
       return !reportDraft.days || t >= sc.since;
     });
     if(wsc.length){
-      var gc = el("div", "card rep");
+      var gc = el("div", "rep doc-sec");
       gc.appendChild(el("h3", "", "Вес за период"));
       if(wsc.length >= 2){
         var gsw = el("div", "");
@@ -5822,7 +5888,7 @@ function renderReportView(){
       return !reportDraft.days || t >= sc.since;
     });
     if(qsc.length){
-      var qc = el("div", "card rep");
+      var qc = el("div", "rep doc-sec");
       qc.appendChild(el("h3", "", "Качество жизни за период"));
       if(qsc.length >= 2){
         var qsw = el("div", "");
@@ -5839,7 +5905,7 @@ function renderReportView(){
   }
 
   if(reportDraft.cats.walks && sc.walks.length){
-    var wc = el("div", "card rep");
+    var wc = el("div", "rep doc-sec");
     wc.appendChild(el("h3", "", "После прогулок"));
     sc.walks.forEach(function(e){
       wc.appendChild(el("div", "hint", whenText(e.ts) + " — " + ((e.ok || []).join(", ") || "заметка") + (e.note ? (". " + e.note) : "")));
@@ -5848,7 +5914,7 @@ function renderReportView(){
   }
 
   if(reportDraft.cats.meds && meds.length){
-    var mc = el("div", "card rep");
+    var mc = el("div", "rep doc-sec");
     mc.appendChild(el("h3", "", "Лекарства, обработки, прививки"));
     meds.forEach(function(m){
       mc.appendChild(el("div", "", (m.name || "—") + (m.substance ? " (" + m.substance + ")" : "") + " " +
@@ -5871,7 +5937,7 @@ function renderReportView(){
   }
 
   if(reportDraft.cats.ticks && ticks.length){
-    var tc = el("div", "card rep");
+    var tc = el("div", "rep doc-sec");
     tc.appendChild(el("h3", "", "Укусы клеща"));
     ticks.forEach(function(t){
       tc.appendChild(el("div", "", "Обнаружен " + (t.foundAt ? whenDayText(t.foundAt) : "—") + (t.place ? ", " + t.place : "")));
@@ -5895,7 +5961,7 @@ function renderReportView(){
       .filter(function(ev){ var t = parseDate(ev.date); t = t ? t.getTime() : ev.enteredAt; return t <= visNow && (!reportDraft.days || t >= sc.since); })
       .sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
     if(vis.length){
-      var vc = el("div", "card rep");
+      var vc = el("div", "rep doc-sec");
       vc.appendChild(el("h3", "", "Визиты к врачу"));
       vis.forEach(function(ev){
         vc.appendChild(el("div", "", whenDayText(ev.date) + " — " + (ev.title || ev.reason || "визит") +
@@ -5916,7 +5982,7 @@ function renderReportView(){
       return true;
     }).sort(function(a, b){ return (parseDate(a.date) || 0) - (parseDate(b.date) || 0); });
     if(evs.length){
-      var ec = el("div", "card rep");
+      var ec = el("div", "rep doc-sec");
       ec.appendChild(el("h3", "", "Анализы и заметки"));
       evs.forEach(function(ev){
         ec.appendChild(el("div", "", eventTypeLabel(ev.type) + ": " + (ev.title || "—") + " — " + whenDayText(ev.date) + (ev.done ? " (выполнено)" : "")));
@@ -5937,7 +6003,7 @@ function renderReportView(){
       if(fl && fl.data && fl.mime && fl.mime.indexOf("image/") === 0) photos.push(fl.data);
     }); }); });
     if(photos.length){
-      var pc = el("div", "card rep");
+      var pc = el("div", "rep doc-sec");
       pc.appendChild(el("h3", "", "Фотографии"));
       var grid = el("div", "thumbs");
       photos.slice(0, 24).forEach(function(src){
@@ -5952,7 +6018,7 @@ function renderReportView(){
   }
 
   if(reportDraft.questions.trim()){
-    var qc = el("div", "card rep");
+    var qc = el("div", "rep doc-sec");
     qc.appendChild(el("h3", "", "Вопросы хозяйки к ветеринару"));
     qc.appendChild(el("div", "", reportDraft.questions.trim()));
     body.appendChild(qc);
@@ -5960,19 +6026,19 @@ function renderReportView(){
 
   body.appendChild(el("div", "note", "Отчёт составлен приложением-дневником. Это не диагноз и не заменяет очный осмотр."));
 
-  var printBtn = el("button", "btn primary", "Печать / сохранить PDF");
+  var printBtn = el("button", "btn primary", "Сохранить PDF");
   printBtn.type = "button";
   printBtn.addEventListener("click", function(){ window.print(); });
   foot.appendChild(printBtn);
 
-  var copyBtn = el("button", "btn soft", "Скопировать текстом");
+  var copyBtn = el("button", "btn soft", "Скопировать текст");
   copyBtn.type = "button";
   copyBtn.addEventListener("click", function(){ copyText(buildReportText(sc, p), copyBtn); });
   foot.appendChild(copyBtn);
 
   var back = el("button", "btn quiet", "Изменить состав");
   back.type = "button";
-  back.addEventListener("click", renderReportSetup);
+  back.addEventListener("click", function(){ reportStep = 1; renderReportSetup(); });
   foot.appendChild(back);
 }
 
