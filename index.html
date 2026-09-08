@@ -265,22 +265,64 @@
   .reasons li .status-dot{margin-top:7px}
   .reasons li.ok{color:var(--ink-soft)}
 
-  /* ——— главный экран ——— */
-  .hero{display:flex;align-items:center;gap:14px;padding:8px 0 4px}
-  .hero .avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none;background:var(--cream-deep)}
-  .hero .hcol{min-width:0}
-  .hero .name{font-size:1.75rem;font-weight:680;letter-spacing:-.025em;line-height:1.15}
-  .hero .caption{font-size:.9375rem;color:var(--muted)}
+  /* ——— главный экран: приветствие (§7.1) ——— */
+  .greet{padding:2px 0 0}
+  .greet-hi{font-size:1.5rem;font-weight:680;letter-spacing:-.02em;line-height:1.2}
+  .greet-sub{font-size:.9375rem;color:var(--muted);margin-top:3px}
+  #s-home.calm .greet-hi{font-size:1.25rem}
 
-  .last{display:flex;flex-direction:column;gap:14px}
-  .last .row{display:flex;align-items:center;gap:10px}
-  .last .row .when{font-size:.85rem;color:var(--muted);margin-left:auto}
-  .last .title{font-size:1.125rem;font-weight:650}
-  .last .lines{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:var(--ink-soft)}
-  .last .lines div{display:flex;gap:9px;align-items:flex-start}
-  .last .lines .status-dot{margin-top:6px;width:8px;height:8px}
+  .hero{display:flex;align-items:center;gap:16px;padding:2px 0}
+  .hero .avatar{width:76px;height:76px;border-radius:26px;object-fit:cover;flex:none;background:var(--cream-deep)}
+  .hero .avatar.ph{display:grid;place-items:center;border:1px solid var(--line)}
+  .hero .avatar.ph svg{width:38px;height:38px;stroke:var(--muted);fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+  .hero .hcol{min-width:0}
+  .hero .name{font-size:1.5rem;font-weight:680;letter-spacing:-.02em;line-height:1.15}
+  .hero .caption{font-size:.9375rem;color:var(--muted);margin-top:2px}
+
+  .statuscard{
+    display:flex;flex-direction:column;gap:11px;
+    padding:18px;border-radius:var(--radius);
+    background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);
+  }
+  .statuscard .row{display:flex;align-items:center;gap:10px}
+  .statuscard .row .when{font-size:.8125rem;color:var(--muted);margin-left:auto;flex:none}
+  .statuscard .title{font-size:1.0625rem;font-weight:660}
+  .statuscard .sum{font-size:.9rem;color:var(--ink-soft);line-height:1.45}
+  .statuscard.tone-yellow{background:var(--amber-soft);border-color:#EDDFC0}
+  .statuscard.tone-red{background:var(--terra-soft);border-color:#EBD3CA}
 
   .empty{text-align:center;color:var(--muted);font-size:.9375rem;padding:8px 0}
+
+  /* ——— блок «Сегодня» (§7.1) ——— */
+  .today{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:16px 18px;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .today h3{font-size:.8125rem;font-weight:650;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .today .note{padding:0;background:none;font-size:.9rem;color:var(--ink-soft)}
+  .today .note b{color:var(--ink)}
+  .sched-row{display:flex;align-items:center;gap:10px;font-size:.9375rem;line-height:1.3}
+  .sched-row .t{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.875rem;flex:none;min-width:44px}
+  .sched-row .lbl{flex:1;min-width:0}
+  .sched-row .pill{flex:none}
+  .today-empty{font-size:.9rem;color:var(--muted)}
+
+  .ask{padding:4px 2px 0}
+  .ask-q{font-size:1.0625rem;font-weight:640}
+  .ask-h{font-size:.9rem;color:var(--muted);margin-top:2px}
+  #s-home.calm .ask{display:none}
+
+  .disclosure{border:1px solid var(--line);border-radius:16px;background:var(--card)}
+  .disclosure > summary{
+    list-style:none;cursor:pointer;padding:13px 16px;
+    font-size:.9375rem;font-weight:600;color:var(--ink-soft);
+    display:flex;align-items:center;gap:8px;
+  }
+  .disclosure > summary::-webkit-details-marker{display:none}
+  .disclosure > summary::after{content:"";width:8px;height:8px;flex:none;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);margin-left:auto;transition:transform .15s ease}
+  .disclosure[open] > summary::after{transform:rotate(45deg)}
+  .disclosure .note{margin:0 16px 14px;background:none;padding:0;font-size:.875rem}
 
   /* ——— дневник ——— */
   .entries{display:flex;flex-direction:column;gap:10px}
@@ -632,36 +674,37 @@
 
   <!-- ═══ 2. ГЛАВНЫЙ ЭКРАН ═══ -->
   <section class="screen" id="s-home">
-    <div class="top">
-      <div>
-        <h1>Misha Health Tracker</h1>
-        <div class="sub">спокойное наблюдение</div>
-      </div>
-      <div class="spacer"></div>
-      <button class="iconbtn" id="toCalendar" aria-label="Календарь">
-        <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>
-      </button>
-      <button class="iconbtn" id="toDiary" aria-label="Дневник">
-        <svg viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H19v16H5.5A1.5 1.5 0 0 1 4 18.5z"/><path d="M8 4v16M11.5 9h4M11.5 13h4"/></svg>
-      </button>
-      <button class="iconbtn" id="toSettings" aria-label="Профиль Миши">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 14.5a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.11a1.6 1.6 0 0 0-1.05-1.47 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.11a1.6 1.6 0 0 0 1.47-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 .97-1.47V3a2 2 0 1 1 4 0v.11a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.11a1.6 1.6 0 0 0-1.47.97z"/></svg>
-      </button>
-    </div>
     <div class="body">
+      <div class="greet">
+        <div class="greet-hi" id="homeGreet">Здравствуйте</div>
+        <div class="greet-sub" id="homeGreetSub"></div>
+      </div>
+
       <div class="hero" id="homeHero"></div>
-      <div class="card last" id="homeLast"></div>
-      <div class="note" id="homeNext" hidden></div>
-      <div class="note" id="homeReminder" hidden></div>
-      <div class="note" id="homeMed" hidden></div>
-      <div class="note" id="homeQol" hidden></div>
-      <div class="note" id="homeNorm"></div>
+
+      <div class="statuscard" id="homeLast"></div>
+
+      <section class="today" id="homeTodayCard">
+        <h3>Сегодня</h3>
+        <div id="homeSched"></div>
+        <div class="today-empty" id="homeTodayEmpty" hidden>На сегодня ничего не запланировано.</div>
+      </section>
+
+      <div class="miniact" id="homeMini"></div>
+
+      <details class="disclosure" id="homeNormWrap">
+        <summary>Личная норма Миши</summary>
+        <div class="note" id="homeNorm"></div>
+      </details>
+
+      <div class="ask">
+        <div class="ask-q">Как там наш мальчик?</div>
+        <div class="ask-h">Спокойно отметим, как он себя чувствует.</div>
+      </div>
     </div>
     <div class="foot">
-      <button class="btn primary" id="startCheck">Начать проверку</button>
-      <button class="btn warn" id="startQuick">Что-то не так</button>
-      <button class="btn quiet" id="startWalk">Отметить после прогулки</button>
-      <button class="btn quiet" id="startQol" hidden>Оценка качества жизни</button>
+      <button class="btn primary" id="startCheck">Проверить Мишу</button>
+      <button class="btn warn" id="startQuick">Мне что-то не нравится</button>
     </div>
   </section>
 
@@ -1186,7 +1229,7 @@ function startApp(){
   scheduleTick();
   setInterval(function(){
     scheduleTick();
-    if(document.getElementById("s-home").classList.contains("active")){ renderNext(); updateStartButton(); }
+    if(document.getElementById("s-home").classList.contains("active")){ renderTodayList(); updateStartButton(); }
   }, 60000);
 
   /* PWA: сервис-воркер работает только когда страница отдаётся по http(s) */
@@ -1949,7 +1992,6 @@ $("#setupSave").addEventListener("click", function(){
 });
 
 $("#setupClose").addEventListener("click", function(){ renderHome(); show("s-home"); });
-$("#toSettings").addEventListener("click", function(){ renderSetup(profile); show("s-setup"); });
 
 /* ══════════════════ Нижняя навигация + быстрые действия (§6) ══════════════════ */
 
@@ -2103,23 +2145,59 @@ function openWindow(){
   return best;
 }
 
-function renderNext(){
-  var box = $("#homeNext");
-  clear(box);
-  if(!scheduleTimes().length){ box.hidden = true; return; }
-  var w = openWindow();
-  if(w && !w.done){
-    box.hidden = false;
-    box.appendChild(el("b", "", "Проверка на " + w.label + ". "));
-    box.appendChild(document.createTextNode("Отметьте состояние Миши — это меньше минуты."));
-    return;
+function pad2(n){ return (n < 10 ? "0" : "") + n; }
+
+/* Единый блок «Сегодня» (§7.1): плановые проверки по времени + дела из календаря
+   на сегодня и просроченные + повторная проверка + недельная оценка качества жизни. */
+function renderTodayList(){
+  var sched = $("#homeSched");
+  if(!sched) return;
+  clear(sched);
+  var now = Date.now();
+  var lastTs = 0;
+  for(var i = 0; i < entries.length; i++){ if(entries[i].type !== "walk"){ lastTs = entries[i].ts; break; } }
+
+  function addRow(t, lbl, pillText, pillCls){
+    var r = el("div", "sched-row");
+    r.appendChild(el("span", "t", t || "·"));
+    r.appendChild(el("span", "lbl", lbl));
+    if(pillText) r.appendChild(el("span", "pill" + (pillCls ? " " + pillCls : ""), pillText));
+    sched.appendChild(r);
   }
-  var nd = nextDue();
-  if(!nd){ box.hidden = true; return; }
-  var today = nd.toDateString() === new Date().toDateString();
-  box.hidden = false;
-  box.appendChild(el("b", "", "Следующая проверка "));
-  box.appendChild(document.createTextNode("— " + (today ? "сегодня" : "завтра") + " в " + fmtTime.format(nd) + "."));
+
+  scheduleTimes().forEach(function(t){
+    var due = dueAt(new Date(), t).getTime();
+    var pt = "", pc = "";
+    if(lastTs >= due - GRACE_MS){ pt = "отмечено"; pc = "ok"; }
+    else if(now >= due && now < due + WINDOW_MS){ pt = "сейчас"; pc = "due"; }
+    else if(now >= due + WINDOW_MS){ pt = "можно пропустить"; pc = ""; }
+    addRow(pad2(t.h) + ":" + pad2(t.m), "Проверка · " + t.label, pt, pc);
+  });
+
+  var rem = load(KEY_REMINDER, null);
+  if(rem && rem.at){
+    if(rem.at > now) addRow("", "Повторная проверка после " + fmtTime.format(new Date(rem.at)), "", "");
+    else addRow("", "Пора повторить проверку", "сейчас", "due");
+  }
+
+  calendarItems().forEach(function(it){
+    if(it.kind === "check" || it.done) return;
+    var n = dayDiff(it.date);
+    if(n === null || n > 0 || n < -14) return;
+    var over = n < 0;
+    var pt, pc;
+    if(it.kind === "tick"){ pt = over ? "не отмечено" : "наблюдение"; pc = over ? "over" : "ok"; }
+    else if(it.kind === "lab"){ pt = over ? "не отмечено" : "анализ"; pc = over ? "over" : "due"; }
+    else if(it.kind === "visit"){ pt = over ? "не отмечено" : "визит"; pc = over ? "over" : "due"; }
+    else { pt = over ? "не отмечено" : "дать"; pc = over ? "over" : "due"; }
+    addRow("", it.title, pt, pc);
+  });
+
+  if(profile && profile.trackQoL && qolDueThisWeek()){
+    addRow("", "Качество жизни — недельная оценка", "на неделе", "due");
+  }
+
+  $("#homeTodayEmpty").hidden = sched.children.length > 0;
 }
 
 function updateStartButton(){
@@ -2127,7 +2205,7 @@ function updateStartButton(){
   if(!b) return;
   var w = openWindow();
   if(w && w.done){ b.className = "btn soft"; b.textContent = "Проверить ещё раз"; }
-  else { b.className = "btn primary"; b.textContent = "Начать проверку"; }
+  else { b.className = "btn primary"; b.textContent = "Проверить Мишу"; }
 }
 
 function notifyReady(){
@@ -2303,111 +2381,127 @@ $("#icsBtn").addEventListener("click", function(){
 
 function setReminder(ms){ save(KEY_REMINDER, { at: Date.now() + ms }); }
 
-function renderReminder(){
-  var box = $("#homeReminder");
-  clear(box);
-  var r = load(KEY_REMINDER, null);
-  if(!r || !r.at){ box.hidden = true; return; }
-  box.hidden = false;
-  if(r.at > Date.now()){
-    box.appendChild(el("b", "", "Повторная проверка "));
-    box.appendChild(document.createTextNode("— после " + fmtTime.format(new Date(r.at)) + "."));
-  }else{
-    box.appendChild(el("b", "", "Пора повторить проверку Миши. "));
-    box.appendChild(document.createTextNode("Понаблюдали — отметьте, как он сейчас."));
-  }
+var OWNER_NAME = "Ася";   /* §7.1 — обращение на главном экране */
+var DOG_GLYPH = '<svg viewBox="0 0 24 24"><path d="M6.5 4.2c-1 1-1.6 2.4-1.7 3.9L3.4 9.3c-.7.5-.6 1.6.3 1.9l1.5.5c.3 2.5 1.8 4.7 4 5.6V19h6.6v-1.2c2.2-.9 3.7-3.1 4-5.6l1.5-.5c.9-.3 1-1.4.3-1.9l-1.4-1.2c-.1-1.5-.7-2.9-1.7-3.9-.6 1-1.2 1.6-1.9 2C15.4 5 13.8 4.6 12 4.6s-3.4.4-4.6 1.6c-.7-.4-1.3-1-1.9-2z"/><path d="M9.7 11.4v.01M14.3 11.4v.01"/></svg>';
+
+/* §7.1 — приветствие по времени суток с обращением к хозяйке */
+function greetLine(){
+  var h = new Date().getHours();
+  var w = h < 5 ? "Доброй ночи" : (h < 12 ? "Доброе утро" : (h < 18 ? "Добрый день" : "Добрый вечер"));
+  return w + ", " + OWNER_NAME;
 }
 
-/* B4: на главной — тихая строка про обработки, до которых осталось ≤ offset дней */
-function renderMedReminder(){
-  var box = $("#homeMed");
-  clear(box);
-  var soon = [];
-  (Array.isArray(meds) ? meds : []).forEach(function(m){
-    if(!m || m.archived || !m.nextDate) return;
-    var n = dayDiff(m.nextDate);
-    if(n === null) return;
-    if(n <= medRemindOffset(m) && n >= -2) soon.push(m);
-  });
-  if(!soon.length){ box.hidden = true; return; }
-  soon.sort(function(a, b){ return (dayDiff(a.nextDate) || 0) - (dayDiff(b.nextDate) || 0); });
-  box.hidden = false;
-  box.appendChild(el("b", "", soon.length === 1 ? "Скоро по плану. " : "Скоро по плану. "));
-  var parts = soon.map(function(m){ return medKindLabel(m.kind).toLowerCase() + " «" + (m.name || "препарат") + "» — " + whenDayText(m.nextDate); });
-  box.appendChild(document.createTextNode(parts.join("; ") + "."));
+/* Год рождения («2019») → «примерно N лет»; свободный текст оставляем как есть */
+function dogAgeText(birth){
+  var s = String(birth || "").trim();
+  if(/^\d{4}$/.test(s)){
+    var yr = new Date().getFullYear() - parseInt(s, 10);
+    if(yr >= 0 && yr < 40) return "примерно " + yr + " " + plural(yr, "год", "года", "лет");
+  }
+  return s;
 }
 
 function renderHome(){
   var p = profile || normalizeProfile({});
+  var sec = $("#s-home");
 
+  var last = null;
+  for(var li = 0; li < entries.length; li++){ if(entries[li].type !== "walk"){ last = entries[li]; break; } }
+
+  /* §9: при жёлтом и красном — без милых фраз и лишнего декора */
+  var calm = !!(last && (last.status === "red" || last.status === "yellow"));
+  if(calm) sec.classList.add("calm"); else sec.classList.remove("calm");
+
+  $("#homeGreet").textContent = greetLine();
+  var gs = $("#homeGreetSub");
+  if(!last) gs.textContent = "Сегодня просто посмотрим, как Миша себя чувствует.";
+  else if(last.status === "green") gs.textContent = "Сегодня с Мишей всё спокойно.";
+  else if(last.status === "neutral") gs.textContent = "Последняя проверка осталась неполной.";
+  else if(last.status === "yellow") gs.textContent = "По последней проверке есть отличия от нормы.";
+  else gs.textContent = "По последней проверке нужен врач.";
+
+  /* герой: фото + имя + порода · пол · вес · возраст */
   var hero = $("#homeHero");
   clear(hero);
   if(p.photo){
     var im = el("img", "avatar");
     im.src = p.photo;
-    im.alt = "Фото " + p.name;
-    im.addEventListener("error", function(){ if(im.parentNode) im.parentNode.removeChild(im); });
+    im.alt = "Фото " + (p.name || "Миша");
+    im.addEventListener("error", function(){
+      if(!im.parentNode) return;
+      var ph = el("div", "avatar ph"); ph.innerHTML = DOG_GLYPH;
+      im.parentNode.insertBefore(ph, im); im.parentNode.removeChild(im);
+    });
     hero.appendChild(im);
+  }else{
+    var phe = el("div", "avatar ph"); phe.innerHTML = DOG_GLYPH;
+    hero.appendChild(phe);
   }
   var hcol = el("div", "hcol");
-  hcol.appendChild(el("div", "name", p.name));
-  var caption = el("div", "caption");
-  hcol.appendChild(caption);
+  hcol.appendChild(el("div", "name", p.name || "Миша"));
+  var bits = [];
+  if(p.breed) bits.push(p.breed);
+  if(p.sex === "m") bits.push("мальчик"); else if(p.sex === "f") bits.push("девочка");
+  if(p.weight) bits.push(String(p.weight).replace(",", ".") + " кг");
+  var age = dogAgeText(p.birth);
+  if(age) bits.push(age);
+  hcol.appendChild(el("div", "caption", bits.join(" · ")));
   hero.appendChild(hcol);
 
-  var last = null;
-  for(var li = 0; li < entries.length; li++){ if(entries[li].type !== "walk"){ last = entries[li]; break; } }
+  /* карточка последней проверки — статус + короткое резюме */
   var box = $("#homeLast");
   clear(box);
-
+  box.className = "statuscard";
+  if(last && last.status === "red") box.classList.add("tone-red");
+  else if(last && last.status === "yellow") box.classList.add("tone-yellow");
   if(!last){
-    caption.textContent = "Проверок пока не было";
-    box.appendChild(el("div", "empty", "Первая проверка займёт минуту — по одному вопросу на экран."));
+    box.appendChild(el("div", "title", "Проверок пока не было"));
+    box.appendChild(el("div", "sum", "Первая проверка займёт минуту — по одному вопросу на экран."));
   }else{
-    caption.textContent = "Последняя проверка";
     var row = el("div", "row");
     row.appendChild(el("div", "status-dot s-" + last.status));
     row.appendChild(el("div", "title", STATUS_TEXT[last.status].title));
     row.appendChild(el("div", "when", whenText(last.ts)));
     box.appendChild(row);
-
     var reasons = last.red.concat(last.yellow);
-    var lines = el("div", "lines");
-    if(reasons.length){
-      reasons.slice(0, 3).forEach(function(r, i){
-        var d = el("div");
-        d.appendChild(el("i", "status-dot s-" + (i < last.red.length ? "red" : "yellow")));
-        d.appendChild(el("span", "", r));
-        lines.appendChild(d);
-      });
-      if(reasons.length > 3) lines.appendChild(el("div", "", "и ещё " + (reasons.length - 3)));
-    }else if(last.status === "neutral"){
-      lines.appendChild(el("div", "", "Часть показателей осталась непроверенной."));
-    }else{
-      lines.appendChild(el("div", "", "Ничего необычного для него не отмечено."));
-    }
-    box.appendChild(lines);
+    var sum;
+    if(reasons.length) sum = reasons.slice(0, 2).join("; ") + (reasons.length > 2 ? " и ещё " + (reasons.length - 2) : "");
+    else if(last.status === "neutral") sum = "Часть показателей осталась непроверенной.";
+    else sum = "Ничего необычного для него не отмечено.";
+    box.appendChild(el("div", "sum", sum));
   }
 
+  /* личная норма — в сворачиваемом блоке (§7.1) */
   var norm = $("#homeNorm");
   clear(norm);
   var normBits = [];
   normBits.push("хромота " + p.limpNorm + (p.limpNorm > 0 ? " (" + pawLabel(p.limpPaw).toLowerCase() + ")" : ""));
   normBits.push("пропуски еды: " + (p.skips === 0 ? "не бывает" : "до " + p.skips));
   if(p.tempNorm != null) normBits.push("температура " + p.tempNorm + " °C");
-  norm.appendChild(el("b", "", "Личная норма " + p.name + ": "));
+  if(p.trackSRR && p.srrNorm != null) normBits.push("дыхание " + p.srrNorm + " вд./мин");
   norm.appendChild(document.createTextNode(normBits.join(", ") + ". С ней и сравниваем."));
 
-  renderReminder();
-  renderMedReminder();
-  renderQolHome();
-  renderNext();
+  /* компактные быстрые действия */
+  var mini = $("#homeMini");
+  clear(mini);
+  var mWalk = el("button", "btn soft", "После прогулки"); mWalk.type = "button";
+  mWalk.addEventListener("click", function(){ startWalk(); });
+  mini.appendChild(mWalk);
+  var mWeight = el("button", "btn soft", "Вес"); mWeight.type = "button";
+  mWeight.addEventListener("click", function(){ show("s-weight"); openWeightForm(null); });
+  mini.appendChild(mWeight);
+  if(p.trackQoL){
+    var mQol = el("button", "btn soft", "Качество жизни"); mQol.type = "button";
+    mQol.addEventListener("click", function(){ renderQol(); show("s-qol"); });
+    mini.appendChild(mQol);
+  }
+
+  renderTodayList();
   updateStartButton();
 }
 
 $("#startCheck").addEventListener("click", function(){ startCheck(); });
 $("#startQuick").addEventListener("click", function(){ startQuick(); });
-$("#toDiary").addEventListener("click", function(){ renderDiary(); show("s-diary"); });
 
 /* ══════════════════ Экран 3: проверка ══════════════════ */
 
@@ -4615,7 +4709,6 @@ function openVisitForm(existing, opts){
   foot.appendChild(cancel);
 }
 
-$("#toCalendar").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
 $("#calBack").addEventListener("click", function(){ renderHome(); show("s-home"); });
 $("#medsBack").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
 $("#tickBack").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
@@ -4893,23 +4986,7 @@ function openQolForm(existing){
   foot.appendChild(cancel);
 }
 
-function renderQolHome(){
-  var btn = $("#startQol"), box = $("#homeQol");
-  var on = !!(profile && profile.trackQoL);
-  if(btn) btn.hidden = !on;
-  if(!box) return;
-  if(on && qolDueThisWeek()){
-    clear(box);
-    box.hidden = false;
-    box.appendChild(el("b", "", "Качество жизни. "));
-    box.appendChild(document.createTextNode("На этой неделе оценку ещё не делали — семь шкал, пара минут."));
-  }else{
-    box.hidden = true;
-  }
-}
-
 $("#qolBack").addEventListener("click", function(){ renderHome(); show("s-home"); });
-$("#startQol").addEventListener("click", function(){ renderQol(); show("s-qol"); });
 
 /* ══════════════════ Фото к записям · после прогулки · отчёт ══════════════════ */
 
@@ -5058,7 +5135,6 @@ function saveWalk(){
   else { renderDiary(); show("s-diary"); }
 }
 
-$("#startWalk").addEventListener("click", function(){ startWalk(); });
 $("#walkBack").addEventListener("click", function(){ renderHome(); show("s-home"); });
 
 /* ═══ Отчёт ветеринару (§10) ═══ */
