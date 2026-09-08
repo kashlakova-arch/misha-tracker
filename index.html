@@ -209,8 +209,12 @@
   .opt.sel{border-color:var(--sage);background:var(--sage-soft)}
   .opt.sel .mark{background:var(--sage);border-color:var(--sage)}
   .opt.sel .mark svg{opacity:1}
-  .opt.skip{border-style:dashed}
+  .opt-sep{height:1px;background:var(--line);margin:6px 12px 2px}
+  .opt.skip{background:var(--cream-deep);border-color:var(--line)}
   .opt.skip .lbl{color:var(--muted);font-weight:550}
+  .opt.skip.sel{border-color:var(--muted);background:var(--cream-deep)}
+  .opt.skip.sel .mark{background:var(--muted);border-color:var(--muted)}
+  .result-photo img{width:100%;max-height:220px;object-fit:cover;border-radius:var(--radius);display:block}
 
   /* ——— шкала и лапы ——— */
   .scale{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -236,11 +240,13 @@
   .paws button.sel{border-color:var(--sage);background:var(--sage-soft)}
   .paws button.wide{grid-column:1 / -1}
 
-  /* ——— прогресс ——— */
-  .progress{padding:0 20px 4px;display:flex;align-items:center;gap:12px}
-  .track{flex:1;height:6px;border-radius:99px;background:var(--cream-deep);overflow:hidden}
-  .track > i{display:block;height:100%;border-radius:99px;background:var(--sage);transition:width .3s cubic-bezier(.4,0,.2,1)}
-  .progress .count{font-size:.8125rem;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+  /* ——— прогресс: 9 сегментов (§7.2) ——— */
+  .progress{padding:6px 20px 4px;display:flex;flex-direction:column;gap:8px}
+  .progress .count{font-size:.8125rem;font-weight:600;color:var(--muted);letter-spacing:.02em}
+  .segs{display:flex;gap:5px}
+  .segs > i{flex:1;height:5px;border-radius:99px;background:var(--cream-deep);transition:background .25s ease,opacity .25s ease}
+  .segs > i.done{background:var(--sage)}
+  .segs > i.now{background:var(--sage);opacity:.5}
 
   .qhead{display:flex;flex-direction:column;gap:6px;padding:12px 0 4px}
   .qhead h2{font-size:1.5rem;line-height:1.25;letter-spacing:-.02em}
@@ -889,8 +895,8 @@
       </button>
     </div>
     <div class="progress">
-      <div class="track" role="progressbar" aria-label="Ход проверки" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1"><i id="progBar" style="width:0%"></i></div>
-      <div class="count" id="progCount">1 / 9</div>
+      <div class="count" id="progCount">Проверка · 1 из 9</div>
+      <div class="segs" id="progSegs" role="progressbar" aria-label="Ход проверки" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1"></div>
     </div>
     <div class="body" id="checkBody"></div>
     <div class="foot" id="checkFoot"></div>
@@ -2880,6 +2886,23 @@ function firstUnanswered(a){
 var srrTimer = null;
 function stopSrrTimer(){ if(srrTimer){ clearInterval(srrTimer); srrTimer = null; } }
 
+/* §7.2 — 9 небольших сегментов вместо одной полосы */
+function progSegments(idx){
+  var total = QUESTIONS.length;
+  var last = idx >= total;
+  $("#progCount").textContent = last ? "почти готово" : ("Проверка · " + (idx + 1) + " из " + total);
+  var segs = $("#progSegs");
+  if(!segs) return;
+  clear(segs);
+  for(var i = 0; i < total; i++){
+    segs.appendChild(el("i", (last || i < idx) ? "done" : (i === idx ? "now" : "")));
+  }
+  segs.setAttribute("aria-valuemin", "1");
+  segs.setAttribute("aria-valuemax", String(total));
+  segs.setAttribute("aria-valuenow", String(last ? total : idx + 1));
+  segs.setAttribute("aria-valuetext", last ? "последний шаг" : ((idx + 1) + " из " + total));
+}
+
 function renderQuestion(){
   var q = QUESTIONS[step];
   var body = $("#checkBody");
@@ -2887,14 +2910,7 @@ function renderQuestion(){
   stopSrrTimer();
   clear(body); clear(foot);
 
-  $("#progBar").style.width = Math.round(step / QUESTIONS.length * 100) + "%";
-  $("#progCount").textContent = (step + 1) + " / " + QUESTIONS.length;
-  var track = $(".progress .track");
-  if(track){
-    track.setAttribute("aria-valuemax", QUESTIONS.length);
-    track.setAttribute("aria-valuenow", step + 1);
-    track.setAttribute("aria-valuetext", (step + 1) + " из " + QUESTIONS.length);
-  }
+  progSegments(step);
   $("#checkBack").style.visibility = step === 0 ? "hidden" : "visible";
 
   var head = el("div", "qhead");
@@ -2911,7 +2927,7 @@ function renderQuestion(){
     renderBreathingQuestion(body, foot);
   }else{
     var opts = el("div", "options");
-    q.options.forEach(function(o){
+    function addOpt(o){
       var b = el("button", "opt" + (o.skip ? " skip" : ""));
       b.type = "button";
       var mark = el("div", "mark"); mark.innerHTML = tick();
@@ -2930,7 +2946,12 @@ function renderQuestion(){
         setTimeout(next, 180);
       });
       opts.appendChild(b);
-    });
+    }
+    /* §7.2 — «Не проверяла» визуально отделено, ниже разделителя */
+    var normalOpts = q.options.filter(function(o){ return !o.skip; });
+    var skipOpts = q.options.filter(function(o){ return o.skip; });
+    normalOpts.forEach(addOpt);
+    if(skipOpts.length){ opts.appendChild(el("div", "opt-sep")); skipOpts.forEach(addOpt); }
     body.appendChild(opts);
     if(editing){
       var nx = el("button", "btn soft", step === QUESTIONS.length - 1 ? "Сохранить" : "Дальше без изменений");
@@ -3217,10 +3238,7 @@ function next(){
 function renderContextStep(){
   var body = $("#checkBody"), foot = $("#checkFoot");
   clear(body); clear(foot);
-  $("#progBar").style.width = "100%";
-  $("#progCount").textContent = "почти готово";
-  var track = $(".progress .track");
-  if(track){ track.setAttribute("aria-valuenow", QUESTIONS.length); track.setAttribute("aria-valuetext", "последний шаг"); }
+  progSegments(QUESTIONS.length);
   $("#checkBack").style.visibility = "visible";
 
   var head = el("div", "qhead");
@@ -3419,6 +3437,23 @@ function renderResult(entry){
   card.appendChild(el("h2", "", STATUS_TEXT[entry.status].title));
   card.appendChild(el("p", "", STATUS_TEXT[entry.status].line));
   body.appendChild(card);
+
+  /* §7.4 — на зелёном: время следующей проверки + спокойное фото Миши */
+  if(entry.status === "green"){
+    var nd = nextDue();
+    if(nd){
+      var td = nd.toDateString() === new Date().toDateString();
+      body.appendChild(el("div", "note", "Следующая проверка — " + (td ? "сегодня" : "завтра") + " в " + fmtTime.format(nd) + "."));
+    }
+    var okPhoto = (profile && profile.photo) || PHOTOS.home;
+    if(okPhoto){
+      var pw = el("div", "result-photo");
+      var pi = el("img"); pi.src = okPhoto; pi.alt = "Миша";
+      pi.addEventListener("error", function(){ if(pw.parentNode) pw.parentNode.removeChild(pw); });
+      pw.appendChild(pi);
+      body.appendChild(pw);
+    }
+  }
 
   if(entry.red.length || entry.yellow.length){
     var wrap = el("div", "card reasons");
