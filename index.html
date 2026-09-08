@@ -460,8 +460,14 @@
     cursor:pointer;
   }
   .fab:active{transform:translateX(-50%) scale(.94);background:var(--sage-deep)}
-  #app.has-tabbar .body{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px)}
-  #app.has-tabbar .foot{bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:14px}
+  /* запас снизу — точное значение проставляет fitFootPad() из JS,
+     здесь только грубый фолбэк на случай, если скрипт ещё не отработал */
+  #app.has-tabbar .body{padding-bottom:200px}
+  #app.has-tabbar .foot{
+    bottom:64px;
+    bottom:calc(64px + env(safe-area-inset-bottom));
+    padding-bottom:14px;
+  }
 
   /* ═══ Лист быстрых действий — ＋ (§6, §7.1) ═══ */
   .sheet-wrap{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
@@ -1736,10 +1742,38 @@ function show(id){
   var node = document.getElementById(id);
   node.classList.add("active");
   syncTabbar(id);
+  fitFootPad(node);
   window.scrollTo(0, 0);
   var body = node.querySelector(".body");
   if(body){ body.classList.remove("fade"); void body.offsetWidth; body.classList.add("fade"); }
 }
+
+/* Нижняя навигация перекрывает нижнюю часть экрана. Точно поднимаем над ней
+   липкий .foot и резервируем ровно столько же места под контентом — иначе на
+   невысоких телефонах кнопка и последний блок уходят под панель. */
+function fitFootPad(node){
+  var body = node.querySelector(".body");
+  if(!body) return;
+  var app = document.getElementById("app");
+  var foot = node.querySelector(".foot");
+  if(!app.classList.contains("has-tabbar")){
+    body.style.paddingBottom = "";
+    if(foot) foot.style.bottom = "";
+    return;
+  }
+  var bar = document.getElementById("tabbar");
+  var barH = (bar && !bar.hidden) ? bar.offsetHeight : 0;
+  if(foot){
+    foot.style.bottom = barH + "px";
+    body.style.paddingBottom = (foot.offsetHeight + barH + 8) + "px";
+  }else{
+    body.style.paddingBottom = (barH + 8) + "px";
+  }
+}
+window.addEventListener("resize", function(){
+  var act = document.querySelector(".screen.active");
+  if(act) fitFootPad(act);
+});
 
 /* Нижняя навигация видна только на четырёх корневых экранах (§6).
    На онбординге («Знакомство», profile ещё null) — прячем. */
@@ -2165,12 +2199,20 @@ function renderTodayList(){
     sched.appendChild(r);
   }
 
+  var SLOT_GRACE_MS = 30 * 60 * 1000;   /* проверка максимум за полчаса до срока засчитывается за слот */
   scheduleTimes().forEach(function(t){
     var due = dueAt(new Date(), t).getTime();
+    var startsAt = due - SLOT_GRACE_MS;
     var pt = "", pc = "";
-    if(lastTs >= due - GRACE_MS){ pt = "отмечено"; pc = "ok"; }
-    else if(now >= due && now < due + WINDOW_MS){ pt = "сейчас"; pc = "due"; }
-    else if(now >= due + WINDOW_MS){ pt = "можно пропустить"; pc = ""; }
+    if(now < startsAt){
+      /* слот ещё впереди — без пометки, даже если сегодня уже проверяли */
+    }else if(lastTs >= startsAt){
+      pt = "отмечено"; pc = "ok";
+    }else if(now >= due && now < due + WINDOW_MS){
+      pt = "сейчас"; pc = "due";
+    }else if(now >= due + WINDOW_MS){
+      pt = "можно пропустить"; pc = "";
+    }
     addRow(pad2(t.h) + ":" + pad2(t.m), "Проверка · " + t.label, pt, pc);
   });
 
