@@ -306,6 +306,14 @@
   .sched-row .t{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.875rem;flex:none;min-width:44px}
   .sched-row .lbl{flex:1;min-width:0}
   .sched-row .pill{flex:none}
+  .sched-row.tap{cursor:pointer}
+  .sched-row.tap:active{opacity:.6}
+  .sched-row.tick{
+    background:var(--apricot-soft);border-radius:12px;
+    padding:10px 12px;margin:0 0 2px;width:100%;text-align:left;border:0;
+  }
+  .sched-row.tick .lbl{font-weight:600;color:var(--ink)}
+  .sched-row.tick .pill{background:var(--apricot);color:#fff}
   .today-empty{font-size:.9rem;color:var(--muted)}
 
   .ask{padding:4px 2px 0}
@@ -2199,6 +2207,18 @@ function renderTodayList(){
     sched.appendChild(r);
   }
 
+  /* Укус клеща — активное наблюдение: важно, показываем каждый день с номером дня (§7.8) */
+  (Array.isArray(ticks) ? ticks : []).forEach(function(t){
+    var day = tickControlDay(t);
+    if(day < 1 || day > TICK_CONTROL_DAYS) return;
+    var r = el("button", "sched-row tick tap");
+    r.type = "button";
+    r.appendChild(el("span", "lbl", "Наблюдение после укуса клеща"));
+    r.appendChild(el("span", "pill", "день " + day + " из " + TICK_CONTROL_DAYS));
+    r.addEventListener("click", function(){ show("s-tick"); openTickForm(t); });
+    sched.appendChild(r);
+  });
+
   var SLOT_GRACE_MS = 30 * 60 * 1000;   /* проверка максимум за полчаса до срока засчитывается за слот */
   scheduleTimes().forEach(function(t){
     var due = dueAt(new Date(), t).getTime();
@@ -2223,13 +2243,12 @@ function renderTodayList(){
   }
 
   calendarItems().forEach(function(it){
-    if(it.kind === "check" || it.done) return;
+    if(it.kind === "check" || it.kind === "tick" || it.done) return;
     var n = dayDiff(it.date);
     if(n === null || n > 0 || n < -14) return;
     var over = n < 0;
     var pt, pc;
-    if(it.kind === "tick"){ pt = over ? "не отмечено" : "наблюдение"; pc = over ? "over" : "ok"; }
-    else if(it.kind === "lab"){ pt = over ? "не отмечено" : "анализ"; pc = over ? "over" : "due"; }
+    if(it.kind === "lab"){ pt = over ? "не отмечено" : "анализ"; pc = over ? "over" : "due"; }
     else if(it.kind === "visit"){ pt = over ? "не отмечено" : "визит"; pc = over ? "over" : "due"; }
     else { pt = over ? "не отмечено" : "дать"; pc = over ? "over" : "due"; }
     addRow("", it.title, pt, pc);
