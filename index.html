@@ -415,6 +415,60 @@
   .feed-s{font-size:.8125rem;color:var(--muted)}
   .feed-time{font-size:.8125rem;color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
 
+  /* ——— карточки лекарств / обработок (§7.7) ——— */
+  .med-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:16px 18px;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .med-card.done{opacity:.72}
+  .med-head{display:flex;align-items:flex-start;gap:10px}
+  .med-name{font-size:1.0625rem;font-weight:660}
+  .med-sub{font-size:.8125rem;color:var(--muted);line-height:1.4}
+  .med-by{font-size:.8125rem;color:var(--muted)}
+  .med-next{display:flex;align-items:center;gap:10px;font-size:.9375rem}
+  .med-next .grow > div:first-child{font-weight:550}
+  .med-act{display:flex;gap:8px;align-items:stretch}
+  .med-act > .btn.primary{flex:1;min-height:var(--tap)}
+  .med-more{position:relative;flex:none}
+  .med-more-btn{width:54px;padding:0;font-size:1.15rem;line-height:1;min-height:var(--tap)}
+  .med-menu{
+    position:absolute;right:0;bottom:calc(100% + 6px);z-index:5;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 8px 24px rgba(53,51,47,.16);
+    display:flex;flex-direction:column;min-width:180px;overflow:hidden;
+  }
+  .med-menu[hidden]{display:none}
+  .med-menu-i{
+    text-align:left;background:none;border:0;cursor:pointer;
+    padding:12px 15px;font-size:.9375rem;font-weight:500;color:var(--ink);
+    border-bottom:1px solid var(--line);
+  }
+  .med-menu-i:last-child{border-bottom:0}
+  .med-menu-i:active{background:var(--cream-deep)}
+
+  /* ——— карточка укуса клеща: прогресс + хронология (§7.8) ——— */
+  .tick-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:16px 18px;
+    display:flex;flex-direction:column;gap:12px;
+  }
+  .tick-head{display:flex;align-items:flex-start;gap:10px}
+  .tick-title{font-size:1.0625rem;font-weight:660}
+  .tick-bar{height:8px;border-radius:999px;background:var(--sage-soft);overflow:hidden}
+  .tick-bar i{display:block;height:100%;background:var(--apricot);border-radius:999px;transition:width .3s ease}
+  .tl{display:flex;flex-direction:column;margin:2px 0}
+  .tl-row{display:flex;gap:12px;padding:6px 0;position:relative}
+  .tl-row .tl-dot{width:10px;height:10px;border-radius:50%;flex:none;margin-top:4px;background:var(--line);box-shadow:0 0 0 3px var(--card)}
+  .tl-row.done .tl-dot{background:var(--sage)}
+  .tl-row::before{content:"";position:absolute;left:4px;top:0;bottom:0;width:2px;background:var(--line)}
+  .tl-row:first-child::before{top:12px}
+  .tl-row:last-child::before{bottom:calc(100% - 12px)}
+  .tl-lbl{font-size:.9375rem;font-weight:550}
+  .tick-photos{display:flex;gap:10px}
+  .tick-photos .tp{flex:1 1 0;min-width:0}
+  .tick-photos .tp img{width:100%;height:112px;object-fit:cover;border-radius:12px;border:1px solid var(--line);display:block;margin-bottom:4px}
+
   .entries{display:flex;flex-direction:column;gap:10px}
   .entry{
     background:var(--card);border:1px solid var(--line);border-radius:18px;
@@ -3803,20 +3857,58 @@ function medNextLabel(k){
 var MED_LOG = [ {v:"given", label:"Дано"}, {v:"skipped", label:"Пропущено"}, {v:"cancelled", label:"Отменено врачом"} ];
 function medLogLabel(v){ for(var i=0;i<MED_LOG.length;i++) if(MED_LOG[i].v === v) return MED_LOG[i].label; return v; }
 
+/* §7.7 — вкладки и разные шаблоны карточек */
+var medsTab = "now";
+var MED_TABS = [
+  { v:"now",   t:"Сейчас",      f:function(m){ return !m.archived && m.kind === "med"; } },
+  { v:"treat", t:"Обработки",   f:function(m){ return !m.archived && (m.kind === "treatment" || m.kind === "deworming"); } },
+  { v:"vacc",  t:"Прививки",    f:function(m){ return !m.archived && m.kind === "vaccine"; } },
+  { v:"done",  t:"Завершённые", f:function(m){ return !!m.archived; } }
+];
+
+function closeMedMenus(){
+  var ms = document.querySelectorAll("#medsBody .med-menu");
+  for(var i = 0; i < ms.length; i++) ms[i].hidden = true;
+}
+
+/* Отметка с карточки. Для повторяющихся с интервалом «Дано» сдвигает nextDate
+   (как в форме записи задним числом) — иначе «осталось N дней» врёт. */
+function markMed(m, st){
+  m.log = m.log || [];
+  m.log.unshift({ ts: Date.now(), status: st });
+  if(st === "given" && medRecurring(m.kind) && typeof m.intervalDays === "number" && m.intervalDays > 0){
+    var d = new Date(); d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + m.intervalDays);
+    m.nextDate = isoDay(d);
+  }
+  save(KEY_MEDS, meds);
+  renderMeds();
+}
+
 function renderMeds(){
   var body = $("#medsBody"), foot = $("#medsFoot");
   clear(body); clear(foot);
-  var active = meds.filter(function(m){ return !m.archived; });
-  var archived = meds.filter(function(m){ return m.archived; });
-  $("#medsSub").textContent = meds.length ? active.length + " активных" : "пока пусто";
+  $("#medsSub").textContent = meds.length
+    ? (meds.filter(function(m){ return !m.archived; }).length + " активных")
+    : "пока пусто";
 
-  if(!meds.length)
+  if(!meds.length){
     body.appendChild(el("div", "empty", "Здесь — лекарства, обработки, прививки и глистогонное: доза, курс, следующая дата и отметки «дано / пропущено». Приложение ничего не рекомендует, только хранит."));
+  }else{
+    var tabs = el("div", "chips");
+    MED_TABS.forEach(function(tb){
+      var b = el("button", "chip" + (medsTab === tb.v ? " sel" : ""), tb.t);
+      b.type = "button";
+      b.addEventListener("click", function(){ medsTab = tb.v; renderMeds(); });
+      tabs.appendChild(b);
+    });
+    body.appendChild(tabs);
 
-  active.forEach(function(m){ body.appendChild(medCard(m)); });
-  if(archived.length){
-    body.appendChild(el("div", "hint", "Завершённые"));
-    archived.forEach(function(m){ body.appendChild(medCard(m)); });
+    var cur = MED_TABS[0];
+    for(var i = 0; i < MED_TABS.length; i++) if(MED_TABS[i].v === medsTab) cur = MED_TABS[i];
+    var list = meds.filter(cur.f);
+    if(!list.length) body.appendChild(el("div", "empty", "Здесь пока пусто."));
+    else list.forEach(function(m){ body.appendChild(medCard(m)); });
   }
 
   var add = el("button", "btn primary", "＋ Добавить лекарство или обработку");
@@ -3831,53 +3923,81 @@ function renderMeds(){
 }
 
 function medCard(m){
-  var card = el("div", "card field");
-  var head = el("div", "rowline");
-  var title = el("div", "grow");
-  title.appendChild(el("div", "", m.name || "Без названия"));
-  var sub = [m.substance, [m.dose, m.unit].filter(Boolean).join(" "), m.timing].filter(Boolean).join(" · ");
-  if(sub) title.appendChild(el("div", "hint", sub));
-  head.appendChild(title);
+  var recurring = medRecurring(m.kind);
+  var card = el("div", "med-card" + (m.archived ? " done" : ""));
+
+  var head = el("div", "med-head");
+  var tcol = el("div", "grow");
+  tcol.appendChild(el("div", "med-name", m.name || "Без названия"));
+  var subBits = [];
+  var du = [m.dose, m.unit].filter(Boolean).join(" ");
+  if(du) subBits.push(du);
+  if(m.timing) subBits.push(m.timing);
+  if(!recurring && m.course) subBits.push(m.course);
+  if(subBits.length) tcol.appendChild(el("div", "med-sub", subBits.join(" · ")));
+  if(m.prescriber) tcol.appendChild(el("div", "med-by", "Назначил: " + m.prescriber));
+  head.appendChild(tcol);
   head.appendChild(el("span", "pill", medKindLabel(m.kind).toLowerCase()));
   card.appendChild(head);
 
-  if(medRecurring(m.kind) && m.nextDate){
-    var nd = el("div", "rowline");
-    nd.appendChild(el("span", "hint grow", "Следующая: " + whenDayText(m.nextDate)));
-    nd.appendChild(duePill(m.nextDate));
-    card.appendChild(nd);
-  }else if(m.course){
-    card.appendChild(el("div", "hint", "Курс: " + m.course));
+  if(recurring && m.nextDate){
+    var line = el("div", "med-next");
+    var cap = el("div", "grow");
+    var lbl = medNextLabel(m.kind);
+    var d = parseDate(m.nextDate);
+    cap.appendChild(el("div", "", lbl.charAt(0).toUpperCase() + lbl.slice(1) + (d ? " " + fmtDate.format(d) : "")));
+    var dd = dayDiff(m.nextDate);
+    if(dd !== null){
+      var txt = dd > 0 ? ("осталось " + dd + " " + plural(dd, "день", "дня", "дней"))
+              : (dd === 0 ? "сегодня" : ("просрочено на " + (-dd) + " " + plural(-dd, "день", "дня", "дней")));
+      cap.appendChild(el("div", "med-sub", txt));
+    }
+    line.appendChild(cap);
+    line.appendChild(duePill(m.nextDate));
+    card.appendChild(line);
   }
 
   var lastLog = (m.log && m.log[0]) || null;
   if(lastLog){
     var when = lastLog.date ? whenDayText(lastLog.date) : whenText(lastLog.ts);
-    var suffix = lastLog.isBackdated ? " · внесено задним числом" : "";
     var prefix = m.oneOff ? "Разовая обработка: " : "Последняя отметка: ";
-    card.appendChild(el("div", "hint", prefix + medLogLabel(lastLog.status).toLowerCase() + " — " + when + suffix));
+    card.appendChild(el("div", "med-sub", prefix + medLogLabel(lastLog.status).toLowerCase() + " — " + when + (lastLog.isBackdated ? " · задним числом" : "")));
   }
 
   if(!m.archived){
-    var act = el("div", "miniact");
-    ["given", "skipped"].forEach(function(st){
-      var b = el("button", "btn soft", medLogLabel(st));
-      b.type = "button";
-      b.addEventListener("click", function(){
-        m.log = m.log || [];
-        m.log.unshift({ ts: Date.now(), status: st });
-        save(KEY_MEDS, meds);
-        renderMeds();
-      });
-      act.appendChild(b);
+    var act = el("div", "med-act");
+    var given = el("button", "btn primary", "Дано");
+    given.type = "button";
+    given.addEventListener("click", function(){ markMed(m, "given"); });
+    act.appendChild(given);
+
+    var moreWrap = el("div", "med-more");
+    var moreBtn = el("button", "btn soft med-more-btn", "•••");
+    moreBtn.type = "button";
+    moreBtn.setAttribute("aria-label", "Ещё");
+    var menu = el("div", "med-menu"); menu.hidden = true;
+    [
+      ["Пропущено",     function(){ markMed(m, "skipped"); }],
+      ["Открыть / изменить", function(){ openMedForm(m); }],
+      ["В завершённые",  function(){ m.archived = true; save(KEY_MEDS, meds); renderMeds(); }]
+    ].forEach(function(pair){
+      var mi = el("button", "med-menu-i", pair[0]);
+      mi.type = "button";
+      mi.addEventListener("click", function(e){ e.stopPropagation(); menu.hidden = true; pair[1](); });
+      menu.appendChild(mi);
     });
-    var open = el("button", "btn soft", "Открыть");
-    open.type = "button";
-    open.addEventListener("click", function(){ openMedForm(m); });
-    act.appendChild(open);
+    moreBtn.addEventListener("click", function(e){
+      e.stopPropagation();
+      var wasHidden = menu.hidden;
+      closeMedMenus();
+      menu.hidden = !wasHidden;
+    });
+    moreWrap.appendChild(moreBtn);
+    moreWrap.appendChild(menu);
+    act.appendChild(moreWrap);
     card.appendChild(act);
   }else{
-    var reopen = el("button", "btn quiet", "Открыть");
+    var reopen = el("button", "btn soft", "Открыть");
     reopen.type = "button";
     reopen.addEventListener("click", function(){ openMedForm(m); });
     card.appendChild(reopen);
@@ -4144,10 +4264,14 @@ function renderTickScreen(){
   clear(body); clear(foot);
   $("#tickSub").textContent = ticks.length ? ticks.length + " " + plural(ticks.length, "запись", "записи", "записей") : "пока пусто";
 
-  if(!ticks.length)
+  if(!ticks.length){
     body.appendChild(el("div", "empty", "Отметьте укус клеща — дату, место, фото. Приложение 21 день напоминает о контроле и хранит анализы, но не ставит диагноз."));
-
-  ticks.forEach(function(t){ body.appendChild(tickCard(t)); });
+  }else{
+    ticks.forEach(function(t){ body.appendChild(tickCard(t)); });
+    var info = el("div", "note");
+    info.innerHTML = "<b>Про анализ:</b> анализ на клещевые инфекции показывает контакт с возбудителем, а не болезнь. Решение о лечении принимает врач — по анализам и самочувствию.";
+    body.appendChild(info);
+  }
 
   var add = el("button", "btn primary", "＋ Отметить укус клеща");
   add.type = "button";
@@ -4191,38 +4315,76 @@ function tickLabs(t){
 }
 
 function tickCard(t){
-  var card = el("div", "card field");
-  card.appendChild(el("div", "", "Укус клеща · " + (t.foundAt ? whenDayText(t.foundAt) : "дата не указана")));
-
+  var card = el("div", "tick-card");
   var day = tickControlDay(t);
-  if(day >= 1 && day <= TICK_CONTROL_DAYS){
-    card.appendChild(el("div", "daycount", "День " + day + " из " + TICK_CONTROL_DAYS));
-    var endD = tickBase(t); endD.setDate(endD.getDate() + TICK_CONTROL_DAYS - 1);
-    card.appendChild(el("div", "hint", "Активный контроль до " + fmtDate.format(endD) + ". Две проверки в день."));
-  }else if(day > TICK_CONTROL_DAYS){
-    if(day <= 90){
-      var longEnd = tickBase(t); longEnd.setDate(longEnd.getDate() + 90);
-      card.appendChild(el("div", "hint", "Активная фаза (21 день) завершена. Следите за самочувствием ещё до ~3 месяцев после укуса; при новых признаках — к врачу. Ориентир — " + fmtDate.format(longEnd) + "."));
-    }else{
-      card.appendChild(el("div", "hint", "С укуса прошло больше 3 месяцев."));
-    }
+  var active = day >= 1 && day <= TICK_CONTROL_DAYS;
+  var endD = tickBase(t); endD.setDate(endD.getDate() + TICK_CONTROL_DAYS - 1);
+
+  var head = el("div", "tick-head");
+  var hc = el("div", "grow");
+  hc.appendChild(el("div", "tick-title", "Наблюдение после укуса"));
+  hc.appendChild(el("div", "med-sub", t.foundAt ? ("укус " + whenDayText(t.foundAt)) : "дата укуса не указана"));
+  head.appendChild(hc);
+  if(active) head.appendChild(el("span", "pill", "день " + day + " из " + TICK_CONTROL_DAYS));
+  card.appendChild(head);
+
+  if(active){
+    var bar = el("div", "tick-bar");
+    var fill = el("i"); fill.style.width = Math.round(day / TICK_CONTROL_DAYS * 100) + "%";
+    bar.appendChild(fill);
+    card.appendChild(bar);
+    card.appendChild(el("div", "med-sub", "Активный контроль до " + fmtDate.format(endD) + " · две проверки в день"));
+  }else if(day > TICK_CONTROL_DAYS && day <= 90){
+    var le = tickBase(t); le.setDate(le.getDate() + 90);
+    card.appendChild(el("div", "med-sub", "Активная фаза завершена. Понаблюдайте ещё до ~3 месяцев после укуса (ориентир " + fmtDate.format(le) + "); при новых признаках — к врачу."));
+  }else if(day > 90){
+    card.appendChild(el("div", "med-sub", "С укуса прошло больше 3 месяцев."));
   }
 
+  var fu = null;
   if(t.followUpEventId){
-    var fu = null;
     for(var fi = 0; fi < events.length; fi++) if(events[fi].id === t.followUpEventId){ fu = events[fi]; break; }
-    if(fu && !fu.done) card.appendChild(el("div", "hint", "Рекомендованный анализ: " + whenDayText(fu.date)));
   }
 
+  var tl = el("div", "tl");
+  function tlRow(dateStr, label, done){
+    var r = el("div", "tl-row" + (done ? " done" : ""));
+    r.appendChild(el("i", "tl-dot"));
+    var c = el("div", "grow");
+    c.appendChild(el("div", "tl-lbl", label));
+    if(dateStr){ var d = parseDate(dateStr); if(d) c.appendChild(el("div", "med-sub", whenDayText(dateStr))); }
+    r.appendChild(c);
+    tl.appendChild(r);
+  }
+  tlRow(t.foundAt, "Клещ обнаружен", !!t.foundAt);
+  tlRow(t.removedAt, "Клещ удалён", !!t.removedAt);
+  if(active) tlRow(isoDay(new Date()), "Идёт наблюдение · день " + day, true);
+  if(fu) tlRow(fu.date, "Рекомендованный анализ" + (fu.done ? " — сдан" : ""), !!fu.done);
+  tlRow(isoDay(endD), "Конец активного контроля", !active && day > TICK_CONTROL_DAYS);
+  card.appendChild(tl);
+
+  if(t.photoTick || t.photoBite){
+    var pr = el("div", "tick-photos");
+    [[t.photoTick, "клещ"], [t.photoBite, "место укуса"]].forEach(function(pair){
+      if(!pair[0]) return;
+      var tp = el("div", "tp");
+      var im = el("img"); im.src = pair[0]; im.alt = pair[1];
+      tp.appendChild(im);
+      tp.appendChild(el("div", "med-sub", pair[1]));
+      pr.appendChild(tp);
+    });
+    card.appendChild(pr);
+  }
+
+  var labs = tickLabs(t);
   var bits = [];
   if(t.place) bits.push("место: " + t.place);
   if(t.fullness) bits.push(tickFullLabel(t.fullness).toLowerCase());
   if(t.method) bits.push("снят: " + t.method);
-  if(bits.length) card.appendChild(el("div", "hint", bits.join(" · ")));
-  var cardLabs = tickLabs(t);
-  if(cardLabs.length) card.appendChild(el("div", "hint", "Анализы: " + cardLabs.length));
+  if(labs.length) bits.push("анализов: " + labs.length);
+  if(bits.length) card.appendChild(el("div", "med-sub", bits.join(" · ")));
 
-  var open = el("button", "btn soft", "Открыть");
+  var open = el("button", "btn soft", "Открыть запись");
   open.type = "button";
   open.addEventListener("click", function(){ openTickForm(t); });
   card.appendChild(open);
@@ -4993,6 +5155,7 @@ function openVisitForm(existing, opts){
 
 $("#calBack").addEventListener("click", function(){ renderHome(); show("s-home"); });
 $("#medsBack").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
+$("#medsBody").addEventListener("click", closeMedMenus);
 $("#tickBack").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
 
 /* ═══ Вес — регулярная метрика (§A2) ═══ */
