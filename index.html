@@ -275,6 +275,9 @@
   .st-neutral{background:var(--cream-deep);border-color:var(--line);color:var(--ink-soft)}
   .st-neutral .glyph{background:var(--muted)}
   .st-neutral .glyph svg{stroke:#fff}
+  .st-log{background:var(--sage-soft);border-color:#DCE5D3;color:var(--sage-deep)}
+  .st-log .glyph{background:var(--sage)}
+  .st-log .glyph svg{stroke:#fff}
 
   .reasons{display:flex;flex-direction:column;gap:12px}
   .reasons h3{font-size:.875rem;font-weight:650;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
@@ -378,7 +381,40 @@
   .secnav .sn-d{font-size:.8125rem;color:var(--muted);margin-top:1px}
   .secnav .sn-ch{flex:none;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
 
-  /* ——— дневник ——— */
+  /* ——— дневник: лента по датам + фильтры (§7.5) ——— */
+  .chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{
+    flex:none;cursor:pointer;
+    padding:7px 13px;border-radius:999px;
+    background:var(--card);border:1px solid var(--line);
+    font-size:.8125rem;font-weight:600;color:var(--ink-soft);white-space:nowrap;
+  }
+  .chip.sel{background:var(--sage);border-color:var(--sage);color:#fff}
+  .feed{display:flex;flex-direction:column;gap:6px}
+  .feed-day{font-size:.75rem;font-weight:650;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:14px 2px 4px}
+  .feed-day:first-child{margin-top:2px}
+  .feed-row{
+    width:100%;text-align:left;cursor:pointer;
+    display:flex;align-items:center;gap:12px;
+    background:var(--card);border:1px solid var(--line);border-left-width:3px;border-radius:14px;
+    padding:12px 14px;transition:background .15s ease;
+  }
+  .feed-row:active{background:var(--cream-deep)}
+  .feed-row.st-green{border-left-color:var(--sage)}
+  .feed-row.st-yellow{border-left-color:var(--amber)}
+  .feed-row.st-red{border-left-color:var(--terra)}
+  .feed-row.st-neutral{border-left-color:var(--muted)}
+  .feed-row.st-log{border-left-color:var(--line)}
+  .feed-ic{width:30px;height:30px;flex:none;border-radius:9px;background:var(--sage-soft);display:grid;place-items:center}
+  .feed-ic svg{width:16px;height:16px;stroke:var(--sage-deep);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .feed-ic.warn{background:var(--terra-soft)}
+  .feed-ic.warn svg{stroke:var(--terra-deep)}
+  .feed-col{flex:1;min-width:0}
+  .feed-t{font-size:.9375rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .feed-s{font-size:.8125rem;color:var(--muted)}
+  .feed-time{font-size:.8125rem;color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+
   .entries{display:flex;flex-direction:column;gap:10px}
   .entry{
     background:var(--card);border:1px solid var(--line);border-radius:18px;
@@ -739,6 +775,8 @@
           <button class="btn soft" id="exportBtn" type="button">Скачать резервную копию</button>
           <button class="btn soft" id="importBtn" type="button">Загрузить из копии</button>
           <input type="file" id="importInput" accept="application/json,.json" hidden>
+          <div class="divider"></div>
+          <button class="btn quiet" id="clearDiaryBtn" type="button">Очистить дневник</button>
           <button class="btn quiet" id="wipeBtn" type="button">Удалить все данные</button>
         </div>
 
@@ -844,13 +882,14 @@
         <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
       </button>
       <div>
-        <h1>Дневник</h1>
+        <h1>Мишины дни</h1>
         <div class="sub" id="diaryCount"></div>
       </div>
       <div class="spacer"></div>
     </div>
     <div class="body">
-      <div class="entries" id="diaryList"></div>
+      <div class="chips" id="diaryChips"></div>
+      <div class="feed" id="diaryList"></div>
     </div>
     <div class="foot" id="diaryFoot"></div>
   </section>
@@ -1798,6 +1837,7 @@ function whenText(ts){
 
 function statusGlyph(status){
   if(status === "green") return '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+  if(status === "log") return '<svg viewBox="0 0 24 24"><circle cx="7" cy="9" r="1.6"/><circle cx="12" cy="7" r="1.6"/><circle cx="17" cy="9" r="1.6"/><path d="M12 12c-3 0-5 2.4-5 4.6 0 1.7 1.4 2.4 2.8 2.4 1 0 1.4-.4 2.2-.4s1.2.4 2.2.4c1.4 0 2.8-.7 2.8-2.4C17 14.4 15 12 12 12z"/></svg>';
   if(status === "neutral") return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12h7"/></svg>';
   if(status === "yellow") return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.2v.1"/></svg>';
   return '<svg viewBox="0 0 24 24"><path d="M12 3.5 21 19H3z"/><path d="M12 10v4M12 17v.1"/></svg>';
@@ -2285,6 +2325,14 @@ $("#importInput").addEventListener("change", function(){
     alert("Данные восстановлены из копии.");
   };
   reader.readAsText(file);
+});
+
+$("#clearDiaryBtn").addEventListener("click", function(){
+  if(!confirm("Удалить все записи дневника? Профиль и личная норма сохранятся.")) return;
+  entries = [];
+  save(KEY_ENTRIES, entries);
+  renderHome();
+  alert("Дневник очищен.");
 });
 
 $("#wipeBtn").addEventListener("click", function(){
@@ -3303,7 +3351,8 @@ $("#quickDone").addEventListener("click", function(){
 /* ══════════════════ Экран 4: результат ══════════════════ */
 
 function renderResult(entry){
-  $("#resultWhen").textContent = (entry.type === "quick" ? "быстрая проверка · " : "") +
+  $("#resultWhen").textContent =
+    (entry.type === "quick" ? "быстрая проверка · " : (entry.type === "walk" ? "после прогулки · " : "")) +
     whenText(entry.ts) + (entry.editedTs ? " · изменено" : "");
 
   var body = $("#resultBody");
@@ -3339,7 +3388,7 @@ function renderResult(entry){
 
   if(entry.ok && entry.ok.length){
     var okWrap = el("div", "card reasons");
-    okWrap.appendChild(el("h3", "", entry.status === "neutral" ? "Что осталось непроверенным" : "Учтено как его норма"));
+    okWrap.appendChild(el("h3", "", entry.type === "walk" ? "Что заметили на прогулке" : (entry.status === "neutral" ? "Что осталось непроверенным" : "Учтено как его норма")));
     var dotCls = entry.status === "neutral" ? "s-neutral" : "s-green";
     var ul2 = el("ul");
     entry.ok.forEach(function(r){
@@ -3384,6 +3433,34 @@ function renderResult(entry){
   }
 
   if(entry.type !== "quick") body.appendChild(mediaBlock(entry));
+
+  /* §7.4 — «дополнительные подробности» записи: все ответы, версия правил, журнал изменений */
+  if(entry.type === "full"){
+    var det = el("details", "disclosure");
+    det.appendChild(el("summary", "", "Подробности записи"));
+    var box = el("div", "note");
+    answerLines(entry.answers).forEach(function(pair){
+      var qa = el("div", "qa");
+      qa.appendChild(el("b", "", pair[0]));
+      qa.appendChild(el("span", "", pair[1]));
+      box.appendChild(qa);
+    });
+    var mv = el("div", "qa");
+    mv.appendChild(el("b", "", "Версия правил"));
+    mv.appendChild(el("span", "", entry.rulesVersion || "н/д"));
+    box.appendChild(mv);
+    if(entry.revisions && entry.revisions.length){
+      box.appendChild(el("div", "rev-h", "Журнал изменений"));
+      entry.revisions.forEach(function(r){
+        var w = whenText(r.ts);
+        (r.changes || []).forEach(function(c){
+          box.appendChild(el("div", "rev-i", c.field + ": «" + c.from + "» → «" + c.to + "» · " + w));
+        });
+      });
+    }
+    det.appendChild(box);
+    body.appendChild(det);
+  }
 
   renderResultFoot(entry);
 }
@@ -3492,123 +3569,102 @@ function answerLines(a){
   return out;
 }
 
+/* §7.5 — лента «Мишины дни»: чипы-фильтры + записи по датам, подробности на s-result */
+var diaryFilter = "all";
+var DIARY_FILTERS = [
+  { v:"all",      t:"Все" },
+  { v:"checks",   t:"Проверки" },
+  { v:"walks",    t:"Прогулки" },
+  { v:"symptoms", t:"Симптомы" },
+  { v:"photos",   t:"Фото" }
+];
+
+function diaryMatch(e, f){
+  if(f === "all") return true;
+  if(f === "checks") return e.type === "full" || e.type === "quick";
+  if(f === "walks") return e.type === "walk";
+  if(f === "symptoms") return e.type === "quick" || (e.red && e.red.length) || (e.yellow && e.yellow.length);
+  if(f === "photos") return e.media && e.media.length;
+  return true;
+}
+
+function entryTypeLabel(e){
+  if(e.type === "walk") return "После прогулки";
+  if(e.type === "quick") return "Быстрая проверка";
+  return "Проверка";
+}
+function entryShort(e){
+  if(e.type === "walk") return (e.ok || [])[0] || e.note || "заметка";
+  var reasons = (e.red || []).concat(e.yellow || []);
+  if(reasons.length) return reasons[0];
+  if(e.status === "neutral") return "проверка неполная";
+  return "всё спокойно";
+}
+function entryIcon(e){
+  if(e.type === "walk") return '<svg viewBox="0 0 24 24"><circle cx="7.5" cy="10" r="1.8"/><circle cx="12" cy="7.5" r="1.8"/><circle cx="16.5" cy="10" r="1.8"/><path d="M12 12.5c-2.6 0-4.4 2-4.4 4.1 0 1.5 1.2 2.3 2.6 2.3.9 0 1.3-.4 1.8-.4s.9.4 1.8.4c1.4 0 2.6-.8 2.6-2.3 0-2.1-1.8-4.1-4.4-4.1z"/></svg>';
+  if(e.type === "quick") return '<svg viewBox="0 0 24 24"><path d="M12 3.5 21 19H3z"/><path d="M12 9v4M12 16v.1"/></svg>';
+  return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.4 12l2.6 2.6 4.6-5.2"/></svg>';
+}
+function diaryDayLabel(ts){
+  var d = new Date(ts), now = new Date();
+  if(d.toDateString() === now.toDateString()) return "Сегодня";
+  if(d.toDateString() === new Date(now.getTime() - 86400000).toDateString()) return "Вчера";
+  return fmtDate.format(d);
+}
+
+function openEntry(entry){
+  renderResult(entry);
+  show("s-result");
+}
+
 function renderDiary(){
+  var chips = $("#diaryChips");
   var list = $("#diaryList");
   var foot = $("#diaryFoot");
-  clear(list); clear(foot);
+  clear(chips); clear(list); clear(foot);
+
+  DIARY_FILTERS.forEach(function(f){
+    var b = el("button", "chip" + (diaryFilter === f.v ? " sel" : ""), f.t);
+    b.type = "button";
+    b.addEventListener("click", function(){ diaryFilter = f.v; renderDiary(); });
+    chips.appendChild(b);
+  });
+
+  var shown = entries.filter(function(e){ return diaryMatch(e, diaryFilter); });
 
   $("#diaryCount").textContent = entries.length
-    ? entries.length + " " + plural(entries.length, "проверка", "проверки", "проверок")
+    ? entries.length + " " + plural(entries.length, "запись", "записи", "записей")
     : "пока пусто";
 
   if(!entries.length){
-    list.appendChild(el("div", "empty", "Здесь будут все проверки — с датой, статусом и тем, что его вызвало."));
-    return;
+    list.appendChild(el("div", "empty", "Здесь будут проверки и прогулки — с датой, статусом и тем, что его вызвало."));
+  }else if(!shown.length){
+    list.appendChild(el("div", "empty", "По этому фильтру записей нет."));
+  }else{
+    var lastDay = "";
+    shown.forEach(function(e){
+      var dl = diaryDayLabel(e.ts);
+      if(dl !== lastDay){ list.appendChild(el("div", "feed-day", dl)); lastDay = dl; }
+
+      var row = el("button", "feed-row st-" + e.status);
+      row.type = "button";
+      var ic = el("div", "feed-ic" + (e.type === "quick" ? " warn" : ""));
+      ic.innerHTML = entryIcon(e);
+      row.appendChild(ic);
+      var col = el("div", "feed-col");
+      col.appendChild(el("div", "feed-t", entryTypeLabel(e) + " · " + entryShort(e)));
+      if(e.editedTs) col.appendChild(el("div", "feed-s", "изменено"));
+      row.appendChild(col);
+      row.appendChild(el("div", "feed-time", fmtTime.format(new Date(e.ts))));
+      row.addEventListener("click", function(){ openEntry(e); });
+      list.appendChild(row);
+    });
   }
-
-  entries.forEach(function(entry){
-    var card = el("button", "entry");
-    card.type = "button";
-
-    var head = el("div", "head");
-    head.appendChild(el("i", "status-dot s-" + entry.status));
-    head.appendChild(el("div", "d", STATUS_TEXT[entry.status].title));
-    if(entry.editedTs) head.appendChild(el("div", "tag", "изменено"));
-    head.appendChild(el("div", "chev", whenText(entry.ts)));
-    card.appendChild(head);
-
-    var reasons = entry.red.concat(entry.yellow);
-    var prefix = entry.type === "quick" ? "Быстрая проверка. " : (entry.type === "walk" ? "После прогулки. " : "");
-    var sum;
-    if(entry.type === "walk"){
-      sum = ((entry.ok || []).join(" · ") || "заметка") + (entry.note ? " — " + entry.note : "");
-    }else{
-      sum = reasons.length ? reasons.join(" · ") : "Ничего необычного для него";
-    }
-    card.appendChild(el("div", "sum", prefix + sum));
-
-    var detail = el("div", "detail");
-
-    if(entry.type === "walk"){
-      var wl = el("div", "rs");
-      (entry.ok || []).forEach(function(r){
-        var d = el("div");
-        d.appendChild(el("i", "status-dot s-log"));
-        d.appendChild(el("span", "", r));
-        wl.appendChild(d);
-      });
-      if(entry.note) wl.appendChild(el("div", "hint", entry.note));
-      detail.appendChild(wl);
-    }else{
-      if(reasons.length){
-        var rs = el("div", "rs");
-        entry.red.forEach(function(r){
-          var d = el("div");
-          d.appendChild(el("i", "status-dot s-red"));
-          d.appendChild(el("span", "", r));
-          rs.appendChild(d);
-        });
-        entry.yellow.forEach(function(r){
-          var d = el("div");
-          d.appendChild(el("i", "status-dot s-yellow"));
-          d.appendChild(el("span", "", r));
-          rs.appendChild(d);
-        });
-        detail.appendChild(rs);
-      }
-      answerLines(entry.answers).forEach(function(pair){
-        var qa = el("div", "qa");
-        qa.appendChild(el("b", "", pair[0]));
-        qa.appendChild(el("span", "", pair[1]));
-        detail.appendChild(qa);
-      });
-      if(entry.context){
-        var cx = el("div", "qa");
-        cx.appendChild(el("b", "", "Контекст"));
-        cx.appendChild(el("span", "", entry.context));
-        detail.appendChild(cx);
-      }
-      var meta = el("div", "qa");
-      meta.appendChild(el("b", "", "Версия правил"));
-      meta.appendChild(el("span", "", entry.rulesVersion || "н/д"));
-      detail.appendChild(meta);
-    }
-
-    detail.appendChild(mediaBlock(entry));
-
-    if(entry.revisions && entry.revisions.length){
-      var rev = el("div", "rev");
-      rev.appendChild(el("div", "rev-h", "Журнал изменений"));
-      entry.revisions.forEach(function(r){
-        var w = whenText(r.ts);
-        (r.changes || []).forEach(function(c){
-          rev.appendChild(el("div", "rev-i", c.field + ": «" + c.from + "» → «" + c.to + "»  ·  " + w));
-        });
-      });
-      detail.appendChild(rev);
-    }
-    card.appendChild(detail);
-
-    card.addEventListener("click", function(){ card.classList.toggle("open"); });
-    list.appendChild(card);
-  });
 
   var reportBtn = el("button", "btn soft", "Отчёт ветеринару");
   reportBtn.type = "button";
   reportBtn.addEventListener("click", function(){ startReport(); });
   foot.appendChild(reportBtn);
-
-  var clearBtn = el("button", "btn quiet", "Очистить дневник");
-  clearBtn.type = "button";
-  clearBtn.addEventListener("click", function(){
-    if(confirm("Удалить все записи дневника? Профиль и личная норма сохранятся.")){
-      entries = [];
-      save(KEY_ENTRIES, entries);
-      renderDiary();
-      renderHome();
-    }
-  });
-  foot.appendChild(clearBtn);
 }
 
 function plural(n, one, few, many){
