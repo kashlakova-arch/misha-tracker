@@ -752,7 +752,8 @@
   #s-diary .top h1,#s-calendar .top h1{font-size:2rem;font-weight:900;line-height:1}
   #s-diary .top h1::after,#s-calendar .top h1::after,#s-meds .top h1::after,#s-tick .top h1::after{content:"♡";color:var(--apricot);font-weight:600;margin-left:5px}
   #s-diary .top .sub,#s-calendar .top .sub,#s-meds .top .sub,#s-tick .top .sub,#s-walk .top .sub{font-size:1rem;color:var(--sage-deep);font-weight:600}
-  #s-diary .screen-kicker,#s-calendar .screen-kicker{position:absolute;right:18px;top:88px;width:126px;text-align:right;font-size:1rem;color:var(--sage-deep)}
+  #s-diary .screen-kicker{position:absolute;right:18px;top:88px;width:126px;text-align:right;font-size:1rem;color:var(--sage-deep)}
+  #s-calendar .screen-kicker{position:static;width:auto;text-align:center;font-size:1rem;color:var(--sage-deep);margin:-6px 0 1px;transform:none}
 
   #s-diary .chips,#s-calendar .seg,#s-meds .chips{background:rgba(255,253,252,.92);border:1px solid var(--line);border-radius:18px;padding:6px;box-shadow:var(--shadow);gap:5px}
   #s-diary .chip,#s-meds .chip{min-height:44px;padding:9px 14px;border:0;border-radius:13px;background:transparent;font-size:.83rem}
@@ -774,13 +775,24 @@
   .page-art img{position:absolute;right:3%;bottom:-12px;width:58%;height:190px;object-fit:cover;object-position:center 25%;border-radius:48% 48% 10% 10%;mix-blend-mode:multiply}
   .page-art .script{position:absolute;left:25px;top:52px;width:43%;font-size:1.25rem;color:var(--sage-deep);transform:rotate(-5deg)}
 
-  #s-calendar .body > .seg{display:grid;grid-template-columns:repeat(3,1fr)}
-  #s-calendar .body > .seg button{min-height:48px;border-radius:13px;font-size:.82rem;font-weight:700}
+  #s-calendar .body > .seg{display:grid;grid-template-columns:repeat(2,1fr)}
+  #s-calendar .body > .seg button{min-width:0;min-height:48px;padding:8px 5px;border-radius:13px;font-size:.78rem;font-weight:700;white-space:nowrap}
   #s-calendar .week-strip{border-radius:20px;padding:12px 8px}
   #s-calendar .week-day b{width:38px;height:42px;border-radius:13px;font-size:1rem}
   #s-calendar .cal-group{font-size:1.38rem;color:var(--ink);font-weight:900;text-transform:none;letter-spacing:-.02em;margin:20px 2px 4px}
   #s-calendar .cal-card{border-left:0;border-radius:19px;padding:16px;gap:6px}
   #s-calendar .cal-card .rowline > .grow{font-size:1rem;font-weight:800}
+  #s-calendar .cal-card .btn.quiet{min-height:42px;padding:8px 4px;justify-content:flex-start;color:var(--sage-deep);font-size:.86rem;font-weight:700}
+  #s-calendar .foot:empty{display:none}
+  .calendar-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;padding:16px;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+  .calendar-actions h3{grid-column:1/-1;font-size:1.15rem;font-weight:900;margin-bottom:2px}
+  .calendar-actions .btn{min-height:52px;padding:11px 8px;border-radius:15px;font-size:.86rem;box-shadow:none}
+  .calendar-actions .primary{grid-column:1/-1}
+  @media (max-width:360px){
+    #s-calendar .body > .seg button{font-size:.72rem}
+    .calendar-actions{grid-template-columns:1fr}
+    .calendar-actions h3,.calendar-actions .primary{grid-column:auto}
+  }
 
   #s-meds .top,#s-tick .top,#s-walk .top{align-items:flex-start;padding-top:calc(env(safe-area-inset-top) + 18px)}
   #s-meds .top h1,#s-tick .top h1,#s-walk .top h1{font-size:1.8rem;font-weight:900;line-height:1.05}
@@ -819,7 +831,7 @@
   #s-walk .walk-tile small{display:block;margin-top:4px;color:var(--muted);font-size:.75rem;font-weight:500}
   #s-walk .field{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
 
-  .quick-fab{position:fixed;right:max(22px,calc((100vw - 520px)/2 + 22px));bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 18px);z-index:44;width:68px;height:68px;border-radius:50%;border:5px solid var(--card);background:var(--sage-deep);color:#fff;font-size:2.4rem;font-weight:300;line-height:1;box-shadow:0 8px 22px rgba(53,51,47,.2);cursor:pointer}
+  .quick-fab{position:fixed;right:max(22px,calc((100vw - 520px)/2 + 22px));bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px);z-index:44;width:60px;height:60px;border-radius:50%;border:4px solid var(--card);background:var(--sage-deep);color:#fff;font-size:2.1rem;font-weight:300;line-height:1;box-shadow:0 8px 22px rgba(53,51,47,.2);cursor:pointer}
   .quick-fab[hidden]{display:none}
   .quick-fab:active{transform:scale(.96)}
   .tabbar{left:14px;right:14px;bottom:10px;width:auto;height:calc(var(--nav-h) + 8px + env(safe-area-inset-bottom));border:1px solid var(--line);border-radius:26px;padding:4px 7px env(safe-area-inset-bottom);box-shadow:0 8px 30px rgba(53,51,47,.12)}
@@ -2235,11 +2247,13 @@ function fitFootPad(node){
   }
   var bar = document.getElementById("tabbar");
   var barH = (bar && !bar.hidden) ? bar.offsetHeight : 0;
+  var fab = document.getElementById("quickFab");
+  var fabReserve = (fab && !fab.hidden) ? (fab.offsetHeight + 34) : 0;
   if(foot){
     foot.style.bottom = barH + "px";
-    body.style.paddingBottom = (foot.offsetHeight + barH + 8) + "px";
+    body.style.paddingBottom = Math.max(foot.offsetHeight + barH + 8, barH + fabReserve + 12) + "px";
   }else{
-    body.style.paddingBottom = (barH + 8) + "px";
+    body.style.paddingBottom = (barH + fabReserve + 12) + "px";
   }
 }
 window.addEventListener("resize", function(){
@@ -2266,7 +2280,7 @@ function syncTabbar(id){
   if(want){
     bar.hidden = false;
     app.classList.add("has-tabbar");
-    if(fab) fab.hidden = !(id === "s-diary" || id === "s-calendar" || id === "s-meds");
+    if(fab) fab.hidden = !(id === "s-diary" || id === "s-meds");
     var tabs = bar.querySelectorAll(".tab");
     for(var i=0;i<tabs.length;i++){
       if(tabs[i].id === want) tabs[i].classList.add("sel");
@@ -5185,31 +5199,34 @@ function calendarItems(){
   return items;
 }
 
-function calFootButtons(foot){
+function calFootButtons(host){
+  var actions = el("section", "calendar-actions");
+  actions.appendChild(el("h3", "", "Добавить в календарь"));
   var addV = el("button", "btn primary", "＋ Визит");
   addV.type = "button";
   addV.addEventListener("click", function(){ openVisitForm(null, {}); });
-  foot.appendChild(addV);
+  actions.appendChild(addV);
 
   var addLab = el("button", "btn soft", "＋ Добавить анализ");
   addLab.type = "button";
   addLab.addEventListener("click", function(){ openLabForm(null, { host: "cal", back: renderCalendar }); });
-  foot.appendChild(addLab);
+  actions.appendChild(addLab);
 
   var addNote = el("button", "btn soft", "＋ Заметка");
   addNote.type = "button";
   addNote.addEventListener("click", function(){ openEventForm(null); });
-  foot.appendChild(addNote);
+  actions.appendChild(addNote);
 
   var toMeds = el("button", "btn soft", "Лекарства и обработки");
   toMeds.type = "button";
   toMeds.addEventListener("click", function(){ renderMeds(); show("s-meds"); });
-  foot.appendChild(toMeds);
+  actions.appendChild(toMeds);
 
   var toTick = el("button", "btn soft", "Укус клеща");
   toTick.type = "button";
   toTick.addEventListener("click", function(){ renderTickScreen(); show("s-tick"); });
-  foot.appendChild(toTick);
+  actions.appendChild(toTick);
+  host.appendChild(actions);
 }
 
 function calendarWeekStrip(items){
@@ -5244,11 +5261,11 @@ function renderCalendar(){
   var body = $("#calBody"), foot = $("#calFoot");
   clear(body); clear(foot);
   body.appendChild(segControl(
-    [{v:"upcoming", label:"▣ Предстоит"}, {v:"calendar", label:"□ Календарь"}, {v:"history", label:"◷ История"}],
+    [{v:"upcoming", label:"▣ Предстоит"}, {v:"history", label:"◷ История"}],
     calTab, function(v){ calTab = v; renderCalendar(); }
   ));
 
-  if(calTab === "history"){ renderCalHistory(body); calFootButtons(foot); return; }
+  if(calTab === "history"){ renderCalHistory(body); calFootButtons(body); return; }
 
   var items = calendarItems().filter(function(i){
     if(i.done) return false;
@@ -5315,12 +5332,12 @@ function renderCalendar(){
     body.appendChild(card);
   });
 
+  calFootButtons(body);
+
   var calArt = el("div", "page-art");
   calArt.appendChild(el("div", "script", "Все важные дела — в одном месте ♡"));
   var calImg = el("img"); calImg.src = PHOTOS.outside; calImg.alt = ""; calArt.appendChild(calImg);
   body.appendChild(calArt);
-
-  calFootButtons(foot);
 }
 
 /* История: прошедшие events (визиты/анализы/заметки), фильтр-чипы, сортировка по дате убыв. */
