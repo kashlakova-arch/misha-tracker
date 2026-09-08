@@ -368,6 +368,21 @@
     display:flex;flex-direction:column;
   }
   .today2 > h3{font-size:1.375rem;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+  .today2 .today-peek{
+    position:absolute;right:16px;top:-14px;width:96px;height:72px;
+    border-radius:50% 50% 18px 18px;overflow:hidden;
+    background:var(--sage-soft);border:3px solid var(--card);
+    box-shadow:0 5px 14px rgba(53,51,47,.11);
+    transform:rotate(2deg);pointer-events:none;
+  }
+  .today2 .today-peek img{width:100%;height:100%;object-fit:cover;object-position:center 28%}
+  .today2 .today-note{
+    position:absolute;right:3px;top:55px;width:100px;
+    color:var(--sage-deep);font-family:"Caveat",cursive;
+    font-size:1rem;font-weight:700;line-height:.98;text-align:right;
+    transform:rotate(-4deg);pointer-events:none;
+  }
+  .today2 #homeSched{margin-top:24px}
   .trow{
     display:flex;align-items:center;gap:12px;width:100%;
     padding:11px 0;border:0;border-top:1px solid var(--line);
@@ -1066,6 +1081,8 @@
 
       <section class="today2" id="homeTodayCard">
         <h3>Сегодня</h3>
+        <div class="today-peek" aria-hidden="true"><img src="assets/misha-portrait.jpg" alt=""></div>
+        <div class="today-note" aria-hidden="true">Всё получится<br>сегодня тоже!</div>
         <div id="homeSched"></div>
         <div class="today-empty" id="homeTodayEmpty" hidden>На сегодня ничего не запланировано.</div>
       </section>
