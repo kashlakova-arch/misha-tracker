@@ -350,6 +350,34 @@
   .disclosure[open] > summary::after{transform:rotate(45deg)}
   .disclosure .note{margin:0 16px 14px;background:none;padding:0;font-size:.875rem}
 
+  /* ——— профиль: обзор + подразделы (§7.10) ——— */
+  .foot[hidden]{display:none !important}
+  .setup-sec[hidden]{display:none !important}
+  .prof-hero{display:flex;align-items:center;gap:16px;padding:4px 0 0}
+  .prof-photo{
+    width:96px;height:96px;flex:none;border-radius:28px;overflow:hidden;
+    border:1px solid var(--line);background:var(--cream-deep);
+    padding:0;cursor:pointer;display:grid;place-items:center;
+  }
+  .prof-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .prof-photo span{font-size:.8125rem;color:var(--muted)}
+  .prof-id{min-width:0}
+  .prof-name{font-size:1.5rem;font-weight:680;letter-spacing:-.02em;line-height:1.15}
+  .prof-meta{font-size:.9375rem;color:var(--muted);margin-top:3px}
+  .prof-photo-hint{font-size:.75rem;color:var(--muted);margin-top:-6px}
+  .secnav{display:flex;flex-direction:column;gap:8px}
+  .secnav button{
+    width:100%;text-align:left;cursor:pointer;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:14px 16px;display:flex;align-items:center;gap:12px;
+    transition:background .15s ease;
+  }
+  .secnav button:active{background:var(--cream-deep)}
+  .secnav .sn-col{flex:1;min-width:0}
+  .secnav .sn-t{font-size:1rem;font-weight:600;color:var(--ink)}
+  .secnav .sn-d{font-size:.8125rem;color:var(--muted);margin-top:1px}
+  .secnav .sn-ch{flex:none;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
+
   /* ——— дневник ——— */
   .entries{display:flex;flex-direction:column;gap:10px}
   .entry{
@@ -539,9 +567,12 @@
   <!-- ═══ 1. ПРОФИЛЬ / ЛИЧНАЯ НОРМА ═══ -->
   <section class="screen" id="s-setup">
     <div class="top">
+      <button class="iconbtn" id="setupBack" hidden aria-label="Назад">
+        <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
       <div>
-        <h1 id="setupTitle">Профиль Миши</h1>
-        <div class="sub">его норма — то, с чем сравниваем</div>
+        <h1 id="setupTitle">Миша</h1>
+        <div class="sub" id="setupSub">профиль и личная норма</div>
       </div>
       <div class="spacer"></div>
       <button class="iconbtn" id="setupClose" hidden aria-label="Закрыть">
@@ -549,159 +580,168 @@
       </button>
     </div>
     <div class="body">
-      <div class="note">Мы сравниваем самочувствие не с «идеальной собакой», а с тем, как обычно бывает именно у него. Привычная хромота или редкий пропуск еды — не повод для тревоги.</div>
 
-      <div class="card field">
-        <button class="avatar-edit" id="photoBtn" type="button" aria-label="Фото Миши">
-          <img id="photoImg" alt="Фото Миши" hidden>
-          <span id="photoPlaceholder">＋ фото</span>
-        </button>
-        <input type="file" id="photoInput" accept="image/*" hidden>
-        <label for="dogName">Кличка</label>
-        <input type="text" id="dogName" placeholder="Миша" autocomplete="off" enterkeyhint="next">
-        <div class="grid2">
-          <div class="field">
-            <label for="dogBirth">Возраст / год рождения</label>
-            <input type="text" id="dogBirth" placeholder="2019" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="dogWeight">Вес, кг</label>
-            <input type="text" id="dogWeight" inputmode="decimal" placeholder="12" autocomplete="off">
+      <!-- ОБЗОР -->
+      <div id="setupOverview">
+        <div class="prof-hero">
+          <button class="prof-photo" id="photoBtn" type="button" aria-label="Фото Миши">
+            <img id="photoImg" alt="Фото Миши" hidden>
+            <span id="photoPlaceholder">＋ фото</span>
+          </button>
+          <input type="file" id="photoInput" accept="image/*" hidden>
+          <div class="prof-id">
+            <div class="prof-name" id="profName">Миша</div>
+            <div class="prof-meta" id="profMeta"></div>
           </div>
         </div>
-        <div class="grid2">
-          <div class="field">
-            <label for="dogBreed">Порода</label>
-            <input type="text" id="dogBreed" placeholder="метис" autocomplete="off">
+        <div class="prof-photo-hint" id="photoHint" hidden>нажмите на фото, чтобы поставить своё</div>
+        <div class="note">Мы сравниваем самочувствие не с «идеальной собакой», а с тем, как обычно бывает именно у него. Привычная хромота или редкий пропуск еды — не повод для тревоги.</div>
+        <div class="secnav" id="setupSecNav"></div>
+        <button class="btn quiet" id="aboutBtn" type="button" hidden>О программе</button>
+      </div>
+
+      <!-- ПОДРАЗДЕЛ (показывается один) -->
+      <div id="setupDetail" hidden>
+
+        <div class="card field setup-sec" data-sec="basic" hidden>
+          <label for="dogName">Кличка</label>
+          <input type="text" id="dogName" placeholder="Миша" autocomplete="off" enterkeyhint="next">
+          <div class="grid2">
+            <div class="field">
+              <label for="dogBirth">Возраст / год рождения</label>
+              <input type="text" id="dogBirth" placeholder="2019" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="dogWeight">Вес, кг</label>
+              <input type="text" id="dogWeight" inputmode="decimal" placeholder="12" autocomplete="off">
+            </div>
           </div>
-          <div class="field">
-            <label>Пол</label>
-            <div class="paws" id="dogSex"></div>
+          <div class="grid2">
+            <div class="field">
+              <label for="dogBreed">Порода</label>
+              <input type="text" id="dogBreed" placeholder="метис" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>Пол</label>
+              <div class="paws" id="dogSex"></div>
+            </div>
           </div>
+          <button class="btn soft" id="toWeight" type="button">История веса и график</button>
         </div>
-        <button class="btn soft" id="toWeight" type="button">История веса и график</button>
-      </div>
 
-      <div class="card field">
-        <label>Хроническое и важное</label>
-        <div class="hint">Диагнозы, аллергии, что нельзя давать, лечащий врач.</div>
-        <textarea id="dogDiagnoses" placeholder="Диагнозы и наблюдения"></textarea>
-        <textarea id="dogAllergies" placeholder="Аллергии"></textarea>
-        <textarea id="dogBanned" placeholder="Запрещённые препараты"></textarea>
-        <input type="text" id="dogVet" placeholder="Лечащий врач" autocomplete="off">
-      </div>
-
-      <div class="card field">
-        <label>Аппетит</label>
-        <div class="hint">Сколько приёмов еды он обычно может пропустить без того, чтобы это было необычным.</div>
-        <div class="options" id="normSkips"></div>
-        <div class="grid2">
-          <div class="field">
-            <label for="mealsPerDay">Приёмов в день</label>
-            <input type="text" id="mealsPerDay" inputmode="numeric" placeholder="2" autocomplete="off">
+        <div class="card field setup-sec" data-sec="norm" hidden>
+          <label for="normTemp">Обычная температура, °C</label>
+          <div class="hint">Если измеряли ректально в спокойном состоянии. Можно оставить пустым.</div>
+          <input type="text" id="normTemp" inputmode="decimal" placeholder="38.5" autocomplete="off">
+          <div class="divider"></div>
+          <label>Дыхание в покое</label>
+          <div class="hint">Если включить, в проверке появится счётчик вдохов во сне или покое — объективный показатель. У здоровой собаки обычно не больше 25–30 в минуту; устойчиво выше — повод к врачу.</div>
+          <button class="btn soft" id="srrToggle" type="button">Считать дыхание в проверке</button>
+          <div class="field" id="srrNormField" hidden>
+            <label for="srrNorm">Его обычная частота, вдохов/мин</label>
+            <input type="text" id="srrNorm" inputmode="numeric" placeholder="напр. 20" autocomplete="off">
+            <div class="hint">Если однажды спокойно посчитали. Можно оставить пустым.</div>
           </div>
-          <div class="field">
-            <label for="portion">Обычная порция</label>
-            <input type="text" id="portion" placeholder="150 г" autocomplete="off">
-          </div>
-        </div>
-        <input type="text" id="medFood" placeholder="Лечебная или любимая еда" autocomplete="off">
-      </div>
-
-      <div class="card field">
-        <label>Обычная хромота</label>
-        <div class="hint">Как он ходит в спокойный, привычный день.</div>
-        <div class="scale" id="normLimp"></div>
-        <div class="hint" id="normLimpText"></div>
-        <div class="field" id="normPawField">
-          <div class="hint">Какая лапа</div>
-          <div class="paws" id="normPaw"></div>
-        </div>
-        <input type="text" id="limpWhen" placeholder="Когда усиливается (после нагрузки, к вечеру…)" autocomplete="off">
-      </div>
-
-      <div class="card field">
-        <label>ЖКТ</label>
-        <input type="text" id="stoolFreq" placeholder="Обычная частота стула" autocomplete="off">
-        <textarea id="giNotes" placeholder="Хронические особенности"></textarea>
-      </div>
-
-      <div class="card field">
-        <label for="normTemp">Обычная температура, °C</label>
-        <div class="hint">Если измеряли ректально в спокойном состоянии. Можно оставить пустым.</div>
-        <input type="text" id="normTemp" inputmode="decimal" placeholder="38.5" autocomplete="off">
-      </div>
-
-      <div class="card field">
-        <label>Дыхание в покое</label>
-        <div class="hint">Необязательно. Если включить, в проверке появится счётчик вдохов во сне или покое — объективный показатель. У здоровой собаки обычно не больше 25–30 в минуту; устойчиво выше — повод к врачу.</div>
-        <button class="btn soft" id="srrToggle" type="button">Считать дыхание в проверке</button>
-        <div class="field" id="srrNormField" hidden>
-          <label for="srrNorm">Его обычная частота, вдохов/мин</label>
-          <input type="text" id="srrNorm" inputmode="numeric" placeholder="напр. 20" autocomplete="off">
-          <div class="hint">Если однажды спокойно посчитали. Можно оставить пустым.</div>
-        </div>
-      </div>
-
-      <div class="card field">
-        <label>Качество жизни (недельная шкала)</label>
-        <div class="hint">Для хроников и пожилых собак. Семь показателей 0–10 раз в неделю — помогает увидеть тренд и обсудить с врачом. Это не оценка «хорошо / плохо», а тема для разговора.</div>
-        <button class="btn soft" id="qolToggle" type="button">Включить недельную оценку</button>
-        <div class="field" id="qolDayField" hidden>
-          <label for="qolDay">День недели для напоминания</label>
-          <select id="qolDay">
-            <option value="0">Воскресенье</option>
-            <option value="1">Понедельник</option>
-            <option value="2">Вторник</option>
-            <option value="3">Среда</option>
-            <option value="4">Четверг</option>
-            <option value="5">Пятница</option>
-            <option value="6">Суббота</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="card field">
-        <label>Расписание проверок</label>
-        <div class="hint">Две спокойные проверки в день. Пропуск — без последствий.</div>
-        <div class="grid2">
-          <div class="field">
-            <label for="checkAM">Утро</label>
-            <input type="time" id="checkAM" value="09:00">
-          </div>
-          <div class="field">
-            <label for="checkPM">Вечер</label>
-            <input type="time" id="checkPM" value="20:00">
+          <div class="divider"></div>
+          <label>Качество жизни (недельная шкала)</label>
+          <div class="hint">Для хроников и пожилых собак. Семь показателей 0–10 раз в неделю — тема для разговора с врачом, а не оценка «хорошо / плохо».</div>
+          <button class="btn soft" id="qolToggle" type="button">Включить недельную оценку</button>
+          <div class="field" id="qolDayField" hidden>
+            <label for="qolDay">День недели для напоминания</label>
+            <select id="qolDay">
+              <option value="0">Воскресенье</option>
+              <option value="1">Понедельник</option>
+              <option value="2">Вторник</option>
+              <option value="3">Среда</option>
+              <option value="4">Четверг</option>
+              <option value="5">Пятница</option>
+              <option value="6">Суббота</option>
+            </select>
           </div>
         </div>
-        <button class="btn soft" id="notifyBtn" type="button">Включить напоминания на этом устройстве</button>
-        <button class="btn soft" id="icsBtn" type="button">Добавить напоминания в календарь</button>
-        <div class="hint">Напоминания на телефоне приходят, только когда приложение установлено на «Домой» и открывалось. Для надёжности добавьте их в системный календарь.</div>
-      </div>
 
-      <div class="card field">
-        <label>Экстренная помощь</label>
-        <div class="hint">Куда звонить, если проверка покажет красный статус.</div>
-        <input type="text" id="clinicName" placeholder="Основная клиника — название" autocomplete="off">
-        <input type="text" id="clinicPhone" inputmode="tel" placeholder="Телефон основной клиники" autocomplete="off">
-        <input type="text" id="clinicAddr" placeholder="Адрес" autocomplete="off">
-        <div class="divider"></div>
-        <input type="text" id="clinic24Name" placeholder="Круглосуточная клиника — название" autocomplete="off">
-        <input type="text" id="clinic24Phone" inputmode="tel" placeholder="Телефон круглосуточной" autocomplete="off">
-        <input type="text" id="clinic24Addr" placeholder="Адрес" autocomplete="off">
-      </div>
+        <div class="card field setup-sec" data-sec="chronic" hidden>
+          <div class="hint">Диагнозы, аллергии, что нельзя давать, лечащий врач.</div>
+          <textarea id="dogDiagnoses" placeholder="Диагнозы и наблюдения"></textarea>
+          <textarea id="dogAllergies" placeholder="Аллергии"></textarea>
+          <textarea id="dogBanned" placeholder="Запрещённые препараты"></textarea>
+          <input type="text" id="dogVet" placeholder="Лечащий врач" autocomplete="off">
+        </div>
 
-      <div class="card field">
-        <label>Данные</label>
-        <div class="hint">Всё хранится только на этом устройстве. Сделайте копию, чтобы не потерять историю.</div>
-        <button class="btn soft" id="exportBtn" type="button">Скачать резервную копию</button>
-        <button class="btn soft" id="importBtn" type="button">Загрузить из копии</button>
-        <input type="file" id="importInput" accept="application/json,.json" hidden>
-        <button class="btn quiet" id="wipeBtn" type="button">Удалить все данные</button>
-      </div>
+        <div class="card field setup-sec" data-sec="food" hidden>
+          <label>Аппетит</label>
+          <div class="hint">Сколько приёмов еды он обычно может пропустить без того, чтобы это было необычным.</div>
+          <div class="options" id="normSkips"></div>
+          <div class="grid2">
+            <div class="field">
+              <label for="mealsPerDay">Приёмов в день</label>
+              <input type="text" id="mealsPerDay" inputmode="numeric" placeholder="2" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="portion">Обычная порция</label>
+              <input type="text" id="portion" placeholder="150 г" autocomplete="off">
+            </div>
+          </div>
+          <input type="text" id="medFood" placeholder="Лечебная или любимая еда" autocomplete="off">
+          <div class="divider"></div>
+          <label>ЖКТ</label>
+          <input type="text" id="stoolFreq" placeholder="Обычная частота стула" autocomplete="off">
+          <textarea id="giNotes" placeholder="Хронические особенности"></textarea>
+        </div>
 
-      <div class="card field">
-        <button class="btn quiet" id="aboutBtn" type="button">О программе и дисклеймеры</button>
+        <div class="card field setup-sec" data-sec="limp" hidden>
+          <label>Обычная хромота</label>
+          <div class="hint">Как он ходит в спокойный, привычный день.</div>
+          <div class="scale" id="normLimp"></div>
+          <div class="hint" id="normLimpText"></div>
+          <div class="field" id="normPawField">
+            <div class="hint">Какая лапа</div>
+            <div class="paws" id="normPaw"></div>
+          </div>
+          <input type="text" id="limpWhen" placeholder="Когда усиливается (после нагрузки, к вечеру…)" autocomplete="off">
+        </div>
+
+        <div class="card field setup-sec" data-sec="clinics" hidden>
+          <div class="hint">Куда звонить, если проверка покажет красный статус.</div>
+          <input type="text" id="clinicName" placeholder="Основная клиника — название" autocomplete="off">
+          <input type="text" id="clinicPhone" inputmode="tel" placeholder="Телефон основной клиники" autocomplete="off">
+          <input type="text" id="clinicAddr" placeholder="Адрес" autocomplete="off">
+          <div class="divider"></div>
+          <input type="text" id="clinic24Name" placeholder="Круглосуточная клиника — название" autocomplete="off">
+          <input type="text" id="clinic24Phone" inputmode="tel" placeholder="Телефон круглосуточной" autocomplete="off">
+          <input type="text" id="clinic24Addr" placeholder="Адрес" autocomplete="off">
+        </div>
+
+        <div class="card field setup-sec" data-sec="remind" hidden>
+          <label>Расписание проверок</label>
+          <div class="hint">Две спокойные проверки в день. Пропуск — без последствий.</div>
+          <div class="grid2">
+            <div class="field">
+              <label for="checkAM">Утро</label>
+              <input type="time" id="checkAM" value="09:00">
+            </div>
+            <div class="field">
+              <label for="checkPM">Вечер</label>
+              <input type="time" id="checkPM" value="20:00">
+            </div>
+          </div>
+          <button class="btn soft" id="notifyBtn" type="button">Включить напоминания на этом устройстве</button>
+          <button class="btn soft" id="icsBtn" type="button">Добавить напоминания в календарь</button>
+          <div class="hint">Напоминания на телефоне приходят, только когда приложение установлено на «Домой» и открывалось. Для надёжности добавьте их в системный календарь.</div>
+          <div class="divider"></div>
+          <label for="reminderOffset">Предупреждать об обработке за, дней</label>
+          <div class="hint">За сколько дней до плановой обработки от блох и клещей показывать напоминание.</div>
+          <input type="text" id="reminderOffset" inputmode="numeric" placeholder="2" autocomplete="off">
+        </div>
+
+        <div class="card field setup-sec" data-sec="data" hidden>
+          <div class="hint">Всё хранится только на этом устройстве. Сделайте копию, чтобы не потерять историю.</div>
+          <button class="btn soft" id="exportBtn" type="button">Скачать резервную копию</button>
+          <button class="btn soft" id="importBtn" type="button">Загрузить из копии</button>
+          <input type="file" id="importInput" accept="application/json,.json" hidden>
+          <button class="btn quiet" id="wipeBtn" type="button">Удалить все данные</button>
+        </div>
+
       </div>
     </div>
     <div class="foot">
@@ -1838,16 +1878,77 @@ function syncTabbar(id){
 /* ══════════════════ Экран 1: профиль ══════════════════ */
 
 var draft = {photo:null, sex:"", skips:0, limpNorm:0, limpPaw:"none", trackSRR:false, trackQoL:false};
+var setupView = "nav";       /* "nav" — обзор, иначе ключ подраздела */
+var setupOnboarding = false; /* первый запуск: показываем сразу «Основное», без обзора */
+
+/* §7.10 — подразделы профиля. Ключ about — не форма, открывает s-about. */
+var SETUP_SECTIONS = [
+  { k:"basic",   t:"Основное",              d:"кличка, порода, вес, возраст" },
+  { k:"norm",    t:"Личная норма",          d:"температура, дыхание, качество жизни" },
+  { k:"chronic", t:"Хронические состояния", d:"диагнозы, аллергии, лечащий врач" },
+  { k:"food",    t:"Питание и ЖКТ",         d:"порции, пропуски еды, стул" },
+  { k:"limp",    t:"Движение и хромота",    d:"обычная хромота и лапа" },
+  { k:"clinics", t:"Врачи и клиники",       d:"куда звонить в экстренном случае" },
+  { k:"remind",  t:"Напоминания",           d:"расписание проверок и обработок" },
+  { k:"data",    t:"Данные и копия",        d:"резервная копия, удаление" },
+  { k:"about",   t:"О приложении",          d:"что делает, чего не делает, дисклеймер" }
+];
+var SECTION_TITLES = (function(){ var m = {}; SETUP_SECTIONS.forEach(function(s){ m[s.k] = s.t; }); return m; })();
 
 function setVal(id, v){ var n = $("#"+id); if(n) n.value = (v === null || v === undefined) ? "" : v; }
 function getVal(id){ var n = $("#"+id); return n ? n.value.trim() : ""; }
+
+function renderSetupSecNav(){
+  var box = $("#setupSecNav");
+  clear(box);
+  SETUP_SECTIONS.forEach(function(s){
+    var b = el("button", ""); b.type = "button";
+    var col = el("div", "sn-col");
+    col.appendChild(el("div", "sn-t", s.t));
+    col.appendChild(el("div", "sn-d", s.d));
+    b.appendChild(col);
+    b.appendChild(el("i", "sn-ch"));
+    b.addEventListener("click", function(){
+      if(s.k === "about"){ $("#aboutBtn").click(); return; }
+      openSetupSection(s.k);
+    });
+    box.appendChild(b);
+  });
+}
+
+function renderSetupHero(){
+  $("#profName").textContent = getVal("dogName") || (profile && profile.name) || "Миша";
+  var bits = [];
+  var br = getVal("dogBreed"); if(br) bits.push(br);
+  if(draft.sex === "m") bits.push("мальчик"); else if(draft.sex === "f") bits.push("девочка");
+  var wt = getVal("dogWeight"); if(wt) bits.push(wt.replace(",", ".") + " кг");
+  var age = dogAgeText(getVal("dogBirth")); if(age) bits.push(age);
+  $("#profMeta").textContent = bits.join(" · ");
+}
+
+function openSetupSection(key){
+  setupView = key;
+  var isNav = (key === "nav");
+  $("#setupOverview").hidden = !isNav;
+  $("#setupDetail").hidden = isNav;
+  var secs = document.querySelectorAll("#setupDetail .setup-sec");
+  for(var i = 0; i < secs.length; i++) secs[i].hidden = (secs[i].getAttribute("data-sec") !== key);
+  var ft = document.querySelector("#s-setup .foot");
+  if(ft) ft.hidden = isNav;
+  $("#setupSave").hidden = isNav;
+  $("#setupBack").hidden = isNav || setupOnboarding;
+  $("#setupTitle").textContent = isNav ? "Миша" : (SECTION_TITLES[key] || "Профиль");
+  $("#setupSub").textContent = isNav ? "профиль и личная норма" : "изменить и сохранить";
+  window.scrollTo(0, 0);
+  fitFootPad(document.getElementById("s-setup"));
+}
 
 function renderSetup(existing){
   var src = normalizeProfile(existing ? JSON.parse(JSON.stringify(existing)) : {});
   draft = {photo:src.photo, sex:src.sex, skips:src.skips, limpNorm:src.limpNorm, limpPaw:src.limpPaw, trackSRR:!!src.trackSRR, trackQoL:!!src.trackQoL};
 
-  $("#setupTitle").textContent = existing ? "Профиль Миши" : "Знакомство";
-  $("#setupClose").hidden = !existing;
+  setupOnboarding = !existing;
+  $("#setupClose").hidden = true;
 
   setVal("dogName", existing ? src.name : "");
   setVal("dogBirth", src.birth);   setVal("dogWeight", src.weight);   setVal("dogBreed", src.breed);
@@ -1861,6 +1962,7 @@ function renderSetup(existing){
   setVal("clinicName", src.clinicName); setVal("clinicPhone", src.clinicPhone); setVal("clinicAddr", src.clinicAddr);
   setVal("clinic24Name", src.clinic24Name); setVal("clinic24Phone", src.clinic24Phone); setVal("clinic24Addr", src.clinic24Addr);
   setVal("checkAM", src.checkAM || "09:00"); setVal("checkPM", src.checkPM || "20:00");
+  setVal("reminderOffset", typeof src.reminderOffsetDays === "number" ? String(src.reminderOffsetDays) : "2");
 
   showPhoto();
   renderSexSeg();
@@ -1869,6 +1971,9 @@ function renderSetup(existing){
   renderNormPaws();
   renderSrrToggle();
   renderQolToggle();
+  renderSetupSecNav();
+  renderSetupHero();
+  openSetupSection(setupOnboarding ? "basic" : "nav");
 }
 
 function renderSrrToggle(){
@@ -1892,9 +1997,17 @@ function renderQolToggle(){
 }
 
 function showPhoto(){
-  var im = $("#photoImg"), ph = $("#photoPlaceholder");
-  if(draft.photo){ im.src = draft.photo; im.hidden = false; ph.hidden = true; }
-  else { im.removeAttribute("src"); im.hidden = true; ph.hidden = false; }
+  var im = $("#photoImg"), ph = $("#photoPlaceholder"), hint = $("#photoHint");
+  if(draft.photo){
+    im.src = draft.photo; im.hidden = false; ph.hidden = true;
+    if(hint) hint.hidden = true;
+  }else if(PHOTOS.portrait){
+    im.src = PHOTOS.portrait; im.hidden = false; ph.hidden = true;
+    if(hint) hint.hidden = false;   /* показываем «нажмите, чтобы поставить своё» */
+  }else{
+    im.removeAttribute("src"); im.hidden = true; ph.hidden = false;
+    if(hint) hint.hidden = true;
+  }
 }
 
 function renderSexSeg(){
@@ -2004,6 +2117,11 @@ function readProfileForm(){
     srrNorm: (isFinite(srr) && srr > 0) ? srr : null,
     trackQoL: !!draft.trackQoL,
     qolDay: (function(){ var n = parseInt(($("#qolDay") || {}).value, 10); return (n >= 0 && n <= 6) ? n : 0; })(),
+    reminderOffsetDays: (function(){
+      var n = parseInt(String(($("#reminderOffset") || {}).value).replace(/[^\d]/g, ""), 10);
+      if(isFinite(n) && n >= 0 && n <= 30) return n;
+      return (profile && typeof profile.reminderOffsetDays === "number") ? profile.reminderOffsetDays : 2;
+    })(),
     checkAM: getVal("checkAM") || "09:00",
     checkPM: getVal("checkPM") || "20:00",
     clinicName: getVal("clinicName"),
@@ -2026,7 +2144,10 @@ $("#qolToggle").addEventListener("click", function(){
 
 $("#photoBtn").addEventListener("click", function(){ $("#photoInput").click(); });
 $("#photoImg").addEventListener("error", function(){
-  if(draft.photo && draft.photo.indexOf("data:") !== 0){ draft.photo = null; showPhoto(); }
+  if(draft.photo && draft.photo.indexOf("data:") === 0) return;   /* битый data: — не трогаем */
+  draft.photo = null;
+  var im = $("#photoImg"), ph = $("#photoPlaceholder"), hint = $("#photoHint");
+  im.removeAttribute("src"); im.hidden = true; ph.hidden = false; if(hint) hint.hidden = true;
 });
 $("#photoInput").addEventListener("change", function(){
   var file = this.files && this.files[0];
@@ -2056,10 +2177,20 @@ $("#setupSave").addEventListener("click", function(){
     alert("Не удалось сохранить — возможно, не хватает места. Попробуйте фото поменьше.");
     return;
   }
-  renderHome();
-  show("s-home");
+  if(setupOnboarding){
+    setupOnboarding = false;
+    renderHome();
+    show("s-home");
+  }else{
+    renderSetupHero();
+    openSetupSection("nav");
+  }
 });
 
+$("#setupBack").addEventListener("click", function(){
+  renderSetupHero();
+  openSetupSection("nav");
+});
 $("#setupClose").addEventListener("click", function(){ renderHome(); show("s-home"); });
 
 /* ══════════════════ Нижняя навигация + быстрые действия (§6) ══════════════════ */
