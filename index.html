@@ -13,7 +13,7 @@
 <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap">
 <title>Misha Health Tracker</title>
 <style>
   :root{
@@ -50,7 +50,7 @@
     margin:0;
     background:var(--cream);
     color:var(--ink);
-    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family:"Nunito",-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size:1.0625rem;
     line-height:1.45;
     -webkit-font-smoothing:antialiased;
@@ -512,6 +512,8 @@
   .secrow .sr-t{flex:1;min-width:0;font-size:1rem;font-weight:600}
   .secrow .sr-ch{flex:none;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
   .prof-foot{text-align:center;font-family:"Caveat",cursive;color:var(--muted);font-size:1.1rem;margin:18px 0 2px}
+  .prof-art{position:relative;height:118px;margin:-32px -8px -6px;pointer-events:none;overflow:hidden}
+  .prof-art img{position:absolute;right:-3px;bottom:-7px;width:142px;height:132px;object-fit:cover;object-position:center 30%;border-radius:48%;mix-blend-mode:multiply}
 
   /* ——— дневник: лента по датам + фильтры (§7.5) ——— */
   .chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
@@ -743,6 +745,87 @@
   .spark text{fill:var(--muted);font-size:11px}
   input[type="range"]{accent-color:var(--sage-deep);height:28px}
 
+  /* ═══ Финальная визуальная система по утверждённым мобильным макетам ═══ */
+  #s-diary .top,#s-calendar .top{justify-content:center;padding-top:calc(env(safe-area-inset-top) + 22px)}
+  #s-diary .top > .iconbtn,#s-calendar .top > .iconbtn{display:none}
+  #s-diary .top > div,#s-calendar .top > div{text-align:center}
+  #s-diary .top h1,#s-calendar .top h1{font-size:2rem;font-weight:900;line-height:1}
+  #s-diary .top h1::after,#s-calendar .top h1::after,#s-meds .top h1::after,#s-tick .top h1::after{content:"♡";color:var(--apricot);font-weight:600;margin-left:5px}
+  #s-diary .top .sub,#s-calendar .top .sub,#s-meds .top .sub,#s-tick .top .sub,#s-walk .top .sub{font-size:1rem;color:var(--sage-deep);font-weight:600}
+  #s-diary .screen-kicker,#s-calendar .screen-kicker{position:absolute;right:18px;top:88px;width:126px;text-align:right;font-size:1rem;color:var(--sage-deep)}
+
+  #s-diary .chips,#s-calendar .seg,#s-meds .chips{background:rgba(255,253,252,.92);border:1px solid var(--line);border-radius:18px;padding:6px;box-shadow:var(--shadow);gap:5px}
+  #s-diary .chip,#s-meds .chip{min-height:44px;padding:9px 14px;border:0;border-radius:13px;background:transparent;font-size:.83rem}
+  #s-diary .chip.sel,#s-meds .chip.sel{background:var(--sage);color:#fff;box-shadow:0 4px 10px rgba(88,113,91,.2)}
+  #s-diary .feed{gap:0}
+  #s-diary .feed-day{font-size:1.42rem;color:var(--ink);font-weight:900;letter-spacing:-.025em;text-transform:none;margin:24px 2px 9px}
+  #s-diary .feed-row{border-left:1px solid var(--line);border-radius:0;padding:15px 13px;gap:11px;box-shadow:var(--shadow)}
+  #s-diary .feed-day + .feed-row{border-radius:20px 20px 0 0}
+  #s-diary .feed-row + .feed-row{border-top:0}
+  #s-diary .feed-row:last-child{border-radius:0 0 20px 20px}
+  #s-diary .feed-time{order:-2;width:50px;font-size:1rem;font-weight:800;color:var(--ink)}
+  #s-diary .feed-ic{order:-1;width:43px;height:43px;border-radius:50%}
+  #s-diary .feed-ic svg{width:22px;height:22px}
+  #s-diary .feed-t{font-size:1rem;font-weight:800}
+  #s-diary .feed-s{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .feed-chev{width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);flex:none}
+
+  .page-art{position:relative;min-height:190px;margin:14px -20px -16px;overflow:hidden;background:linear-gradient(145deg,var(--sage-soft),var(--apricot-soft))}
+  .page-art img{position:absolute;right:3%;bottom:-12px;width:58%;height:190px;object-fit:cover;object-position:center 25%;border-radius:48% 48% 10% 10%;mix-blend-mode:multiply}
+  .page-art .script{position:absolute;left:25px;top:52px;width:43%;font-size:1.25rem;color:var(--sage-deep);transform:rotate(-5deg)}
+
+  #s-calendar .body > .seg{display:grid;grid-template-columns:repeat(3,1fr)}
+  #s-calendar .body > .seg button{min-height:48px;border-radius:13px;font-size:.82rem;font-weight:700}
+  #s-calendar .week-strip{border-radius:20px;padding:12px 8px}
+  #s-calendar .week-day b{width:38px;height:42px;border-radius:13px;font-size:1rem}
+  #s-calendar .cal-group{font-size:1.38rem;color:var(--ink);font-weight:900;text-transform:none;letter-spacing:-.02em;margin:20px 2px 4px}
+  #s-calendar .cal-card{border-left:0;border-radius:19px;padding:16px;gap:6px}
+  #s-calendar .cal-card .rowline > .grow{font-size:1rem;font-weight:800}
+
+  #s-meds .top,#s-tick .top,#s-walk .top{align-items:flex-start;padding-top:calc(env(safe-area-inset-top) + 18px)}
+  #s-meds .top h1,#s-tick .top h1,#s-walk .top h1{font-size:1.8rem;font-weight:900;line-height:1.05}
+  #s-meds .meds-visual{min-height:158px;margin-top:-8px;border-radius:0;background:transparent;border:0;box-shadow:none}
+  #s-meds .meds-visual::after{background:linear-gradient(90deg,rgba(248,245,239,.98) 0%,rgba(248,245,239,.16) 58%)}
+  #s-meds .meds-visual img{width:57%;left:auto;object-position:center 22%;border-radius:42% 0 0 42%}
+  #s-meds .meds-visual .vs-copy{color:var(--sage-deep);text-shadow:none;max-width:48%}
+  #s-meds .meds-visual .vs-title{font-family:"Caveat",cursive;font-size:1.25rem}
+  .med-summary{display:flex;align-items:center;gap:14px;padding:15px 17px;border-radius:19px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .med-summary .ms-ic,.med-kind-icon{width:48px;height:48px;flex:none;border-radius:50%;background:var(--sage-soft);display:grid;place-items:center;color:var(--sage-deep);font-size:1.35rem}
+  .med-summary .ms-title{font-size:1.15rem;font-weight:900}
+  .med-card{border-radius:20px;padding:17px;gap:11px}
+  .med-head{align-items:center}
+  .med-kind-icon.apricot{background:var(--apricot-soft);color:var(--apricot)}
+  .med-name{font-size:1.15rem;font-weight:900}
+  .med-card .pill{border:0;background:var(--sage-soft);color:var(--sage-deep)}
+
+  #s-tick .screen-kicker{margin-top:-8px;font-size:1.1rem;color:var(--sage-deep)}
+  #s-tick .tick-card{border-radius:22px;padding:18px;gap:14px}
+  #s-tick .tick-title{font-size:1.2rem;font-weight:900}
+  #s-tick .tick-bar{height:11px;background:var(--cream-deep)}
+  #s-tick .tick-bar i{background:var(--sage-deep)}
+  #s-tick .tick-photos .tp{padding:7px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+  #s-tick .tick-photos .tp img{height:126px;border:0;border-radius:11px}
+  #s-tick .tl-row{padding:8px 0}
+
+  #s-walk .walk-visual{min-height:235px;margin:-76px -20px 0;border-radius:0;border:0;box-shadow:none;align-items:flex-end}
+  #s-walk .walk-visual img{object-position:center 42%}
+  #s-walk .walk-visual::after{background:linear-gradient(0deg,rgba(53,51,47,.56),transparent 65%)}
+  #s-walk .walk-visual .vs-title{font-family:"Caveat",cursive;font-size:1.42rem}
+  #s-walk .walk-normal{min-height:82px;border:4px solid #fff;border-radius:24px;background:var(--sage-deep);color:#fff;font-size:1.3rem;font-weight:900;box-shadow:0 8px 22px rgba(88,113,91,.25)}
+  #s-walk .walk-grid{gap:10px}
+  #s-walk .walk-tile{min-height:96px;background:var(--card);border-radius:18px;padding:13px;box-shadow:var(--shadow);font-weight:800}
+  #s-walk .walk-emoji{width:42px;height:42px;border-radius:50%;background:var(--sage-soft);display:grid;place-items:center}
+  #s-walk .walk-tile .grow{display:flex;flex-direction:column;line-height:1.2}
+  #s-walk .walk-tile small{display:block;margin-top:4px;color:var(--muted);font-size:.75rem;font-weight:500}
+  #s-walk .field{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+
+  .quick-fab{position:fixed;right:max(22px,calc((100vw - 520px)/2 + 22px));bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 18px);z-index:44;width:68px;height:68px;border-radius:50%;border:5px solid var(--card);background:var(--sage-deep);color:#fff;font-size:2.4rem;font-weight:300;line-height:1;box-shadow:0 8px 22px rgba(53,51,47,.2);cursor:pointer}
+  .quick-fab[hidden]{display:none}
+  .quick-fab:active{transform:scale(.96)}
+  .tabbar{left:14px;right:14px;bottom:10px;width:auto;height:calc(var(--nav-h) + 8px + env(safe-area-inset-bottom));border:1px solid var(--line);border-radius:26px;padding:4px 7px env(safe-area-inset-bottom);box-shadow:0 8px 30px rgba(53,51,47,.12)}
+  .tab.sel{background:var(--sage-soft);border-radius:18px}
+  .tab.sel .tab-i{background:transparent}
+
   @media print {
     .top, .foot, .iconbtn, .tabbar, .sheet-wrap, .bg, .bell { display:none !important; }
     .screen:not(.active) { display:none !important; }
@@ -889,6 +972,7 @@
         <div class="seccard" id="setupSecCare"></div>
 
         <div class="prof-foot">Всё важное о Мишеньке — в одном месте 🤍</div>
+        <div class="prof-art" aria-hidden="true"><img src="assets/misha-gait.webp" alt=""></div>
         <button class="btn quiet" id="aboutBtn" type="button" hidden>О программе</button>
       </div>
 
@@ -1159,9 +1243,9 @@
       <div class="screen-kicker">Мишины дни — большие и маленькие</div>
       <div class="chips" id="diaryChips"></div>
       <div class="feed" id="diaryList"></div>
-      <div class="visual-strip diary-photo">
-        <img src="assets/misha.webp" alt="Миша отдыхает дома">
-        <div class="vs-copy"><div class="vs-title">Тихие дни тоже важны</div></div>
+      <div class="page-art diary-photo" aria-hidden="true">
+        <div class="script">Маленькие события — большая забота ♡</div>
+        <img src="assets/misha-home.jpg" alt="">
       </div>
     </div>
     <div class="foot" id="diaryFoot"></div>
@@ -1344,6 +1428,7 @@
       <span>Миша</span>
     </button>
   </nav>
+  <button class="quick-fab" id="quickFab" type="button" aria-label="Добавить запись" hidden>＋</button>
 
   <!-- ═══ Быстрые действия — ＋ (§6, §7.1) ═══ -->
   <div class="sheet-wrap" id="quickSheet" hidden>
@@ -2174,12 +2259,14 @@ var TAB_OF = {
 function syncTabbar(id){
   var bar = document.getElementById("tabbar");
   if(!bar) return;
+  var fab = document.getElementById("quickFab");
   var app = document.getElementById("app");
   var want = TAB_OF[id];
   if(want === "tabMisha" && !profile) want = null;
   if(want){
     bar.hidden = false;
     app.classList.add("has-tabbar");
+    if(fab) fab.hidden = !(id === "s-diary" || id === "s-calendar" || id === "s-meds");
     var tabs = bar.querySelectorAll(".tab");
     for(var i=0;i<tabs.length;i++){
       if(tabs[i].id === want) tabs[i].classList.add("sel");
@@ -2188,6 +2275,7 @@ function syncTabbar(id){
   }else{
     bar.hidden = true;
     app.classList.remove("has-tabbar");
+    if(fab) fab.hidden = true;
   }
   closeQuickSheet();
 }
@@ -2573,6 +2661,7 @@ function closeQuickSheet(){
   s.classList.remove("in");
   window.setTimeout(function(){ if(!s.classList.contains("in")) s.hidden = true; }, 240);
 }
+$("#quickFab").addEventListener("click", openQuickSheet);
 $("#quickSheetBg").addEventListener("click", closeQuickSheet);
 $("#qaCheck").addEventListener("click", function(){ closeQuickSheet(); startCheck(); });
 $("#qaWalk").addEventListener("click", function(){ closeQuickSheet(); startWalk(); });
@@ -3923,10 +4012,10 @@ function answerLines(a){
 var diaryFilter = "all";
 var DIARY_FILTERS = [
   { v:"all",      t:"Все" },
-  { v:"checks",   t:"Проверки" },
-  { v:"walks",    t:"Прогулки" },
-  { v:"symptoms", t:"Симптомы" },
-  { v:"photos",   t:"Фото" }
+  { v:"checks",   t:"✓ Проверки" },
+  { v:"walks",    t:"🐾 Прогулки" },
+  { v:"symptoms", t:"◉ Симптомы" },
+  { v:"photos",   t:"▧ Фото" }
 ];
 
 function diaryMatch(e, f){
@@ -3998,14 +4087,15 @@ function renderDiary(){
 
       var row = el("button", "feed-row st-" + e.status);
       row.type = "button";
-      var ic = el("div", "feed-ic" + (e.type === "quick" ? " warn" : ""));
+      row.appendChild(el("div", "feed-time", fmtTime.format(new Date(e.ts))));
+      var ic = el("div", "feed-ic" + (e.type === "quick" || e.type === "walk" ? " warn" : ""));
       ic.innerHTML = entryIcon(e);
       row.appendChild(ic);
       var col = el("div", "feed-col");
-      col.appendChild(el("div", "feed-t", entryTypeLabel(e) + " · " + entryShort(e)));
-      if(e.editedTs) col.appendChild(el("div", "feed-s", "изменено"));
+      col.appendChild(el("div", "feed-t", entryTypeLabel(e)));
+      col.appendChild(el("div", "feed-s", entryShort(e) + (e.editedTs ? " · изменено" : "")));
       row.appendChild(col);
-      row.appendChild(el("div", "feed-time", fmtTime.format(new Date(e.ts))));
+      row.appendChild(el("i", "feed-chev"));
       row.addEventListener("click", function(){ openEntry(e); });
       list.appendChild(row);
     });
@@ -4196,24 +4286,33 @@ function renderMeds(){
   medCopy.appendChild(el("div", "vs-sub", "Курсы, обработки и прививки в одном месте"));
   medHero.appendChild(medCopy); body.appendChild(medHero);
 
-  if(!meds.length){
-    body.appendChild(el("div", "empty", "Здесь — лекарства, обработки, прививки и глистогонное: доза, курс, следующая дата и отметки «дано / пропущено». Приложение ничего не рекомендует, только хранит."));
-  }else{
-    var tabs = el("div", "chips");
-    MED_TABS.forEach(function(tb){
-      var b = el("button", "chip" + (medsTab === tb.v ? " sel" : ""), tb.t);
-      b.type = "button";
-      b.addEventListener("click", function(){ medsTab = tb.v; renderMeds(); });
-      tabs.appendChild(b);
-    });
-    body.appendChild(tabs);
+  var tabs = el("div", "chips");
+  MED_TABS.forEach(function(tb){
+    var b = el("button", "chip" + (medsTab === tb.v ? " sel" : ""), tb.t);
+    b.type = "button";
+    b.addEventListener("click", function(){ medsTab = tb.v; renderMeds(); });
+    tabs.appendChild(b);
+  });
+  body.appendChild(tabs);
 
-    var cur = MED_TABS[0];
-    for(var i = 0; i < MED_TABS.length; i++) if(MED_TABS[i].v === medsTab) cur = MED_TABS[i];
-    var list = meds.filter(cur.f);
-    if(!list.length) body.appendChild(el("div", "empty", "Здесь пока пусто."));
-    else list.forEach(function(m){ body.appendChild(medCard(m)); });
-  }
+  var todayCount = meds.filter(function(m){ return !m.archived && m.kind === "med"; }).length;
+  var summary = el("div", "med-summary");
+  summary.appendChild(el("span", "ms-ic", "▣"));
+  var sumCol = el("div", "grow");
+  sumCol.appendChild(el("div", "ms-title", "Сегодня"));
+  sumCol.appendChild(el("div", "med-sub", todayCount ? (todayCount + " " + plural(todayCount, "приём", "приёма", "приёмов")) : "приёмов не запланировано"));
+  summary.appendChild(sumCol); body.appendChild(summary);
+
+  var cur = MED_TABS[0];
+  for(var i = 0; i < MED_TABS.length; i++) if(MED_TABS[i].v === medsTab) cur = MED_TABS[i];
+  var list = meds.filter(cur.f);
+  if(!list.length) body.appendChild(el("div", "empty", meds.length ? "Здесь пока пусто." : "Добавьте лекарство, обработку или прививку — расписание и отметки будут собраны здесь."));
+  else list.forEach(function(m){ body.appendChild(medCard(m)); });
+
+  var art = el("div", "page-art");
+  art.appendChild(el("div", "script", "Ничего не держим в голове ♡"));
+  var artImg = el("img"); artImg.src = PHOTOS.portrait; artImg.alt = ""; art.appendChild(artImg);
+  body.appendChild(art);
 
   var add = el("button", "btn primary", "＋ Добавить лекарство или обработку");
   add.type = "button";
@@ -4231,6 +4330,7 @@ function medCard(m){
   var card = el("div", "med-card" + (m.archived ? " done" : ""));
 
   var head = el("div", "med-head");
+  head.appendChild(el("span", "med-kind-icon" + (m.kind === "med" ? " apricot" : ""), m.kind === "med" ? "◒" : (m.kind === "vaccine" ? "✦" : "♢")));
   var tcol = el("div", "grow");
   tcol.appendChild(el("div", "med-name", m.name || "Без названия"));
   var subBits = [];
@@ -4578,6 +4678,11 @@ function renderTickScreen(){
     body.appendChild(info);
   }
 
+  var tickArt = el("div", "page-art");
+  tickArt.appendChild(el("div", "script", "Мишенька под присмотром ♡"));
+  var tickImg = el("img"); tickImg.src = PHOTOS.outside; tickImg.alt = ""; tickArt.appendChild(tickImg);
+  body.appendChild(tickArt);
+
   var add = el("button", "btn primary", "＋ Отметить укус клеща");
   add.type = "button";
   add.addEventListener("click", function(){ openTickForm(null); });
@@ -4627,10 +4732,10 @@ function tickCard(t){
 
   var head = el("div", "tick-head");
   var hc = el("div", "grow");
-  hc.appendChild(el("div", "tick-title", "Наблюдение после укуса"));
+  hc.appendChild(el("div", "tick-title", active ? ("День " + day + " из " + TICK_CONTROL_DAYS) : "Наблюдение после укуса"));
   hc.appendChild(el("div", "med-sub", t.foundAt ? ("укус " + whenDayText(t.foundAt)) : "дата укуса не указана"));
   head.appendChild(hc);
-  if(active) head.appendChild(el("span", "pill", "день " + day + " из " + TICK_CONTROL_DAYS));
+  if(active) head.appendChild(el("span", "pill ok", "активное наблюдение"));
   card.appendChild(head);
 
   if(active){
@@ -5139,7 +5244,7 @@ function renderCalendar(){
   var body = $("#calBody"), foot = $("#calFoot");
   clear(body); clear(foot);
   body.appendChild(segControl(
-    [{v:"upcoming", label:"Предстоит"}, {v:"history", label:"История"}],
+    [{v:"upcoming", label:"▣ Предстоит"}, {v:"calendar", label:"□ Календарь"}, {v:"history", label:"◷ История"}],
     calTab, function(v){ calTab = v; renderCalendar(); }
   ));
 
@@ -5209,6 +5314,11 @@ function renderCalendar(){
     }
     body.appendChild(card);
   });
+
+  var calArt = el("div", "page-art");
+  calArt.appendChild(el("div", "script", "Все важные дела — в одном месте ♡"));
+  var calImg = el("img"); calImg.src = PHOTOS.outside; calImg.alt = ""; calArt.appendChild(calImg);
+  body.appendChild(calArt);
 
   calFootButtons(foot);
 }
@@ -5820,12 +5930,12 @@ function mediaBlock(entry){
 /* ═══ После прогулки (§2) ═══ */
 
 var WALK_ITEMS = [
-  {v:"overheat", icon:"☀", label:"Перегревался или тяжело дышал"},
-  {v:"urine",    icon:"💧", label:"Необычная моча"},
-  {v:"tick",     icon:"✳", label:"Нашли клеща"},
-  {v:"limp",     icon:"🐾", label:"Хромал сильнее обычного"},
-  {v:"injury",   icon:"＋", label:"Порез или ушиб"},
-  {v:"behavior", icon:"♡", label:"Необычное поведение"}
+  {v:"overheat", icon:"☀", label:"Перегрелся", sub:"Тяжело дышит"},
+  {v:"urine",    icon:"💧", label:"Моча", sub:"Необычный цвет"},
+  {v:"tick",     icon:"✳", label:"Нашли клеща", sub:"Добавить запись"},
+  {v:"limp",     icon:"🐾", label:"Хромота", sub:"Сильнее обычного"},
+  {v:"injury",   icon:"＋", label:"Травма", sub:"Лапа или кожа"},
+  {v:"behavior", icon:"♡", label:"Поведение", sub:"Не как обычно"}
 ];
 var walkPicked = {};
 var walkNormal = false;
@@ -5864,7 +5974,10 @@ function renderWalk(){
     var box = el("div", "box"); box.innerHTML = tick();
     b.appendChild(box);
     b.appendChild(el("span", "walk-emoji", it.icon));
-    b.appendChild(el("span", "", it.label));
+    var walkCopy = el("span", "grow");
+    walkCopy.appendChild(el("span", "", it.label));
+    walkCopy.appendChild(el("small", "", it.sub));
+    b.appendChild(walkCopy);
     b.setAttribute("aria-pressed", walkPicked[it.v] ? "true" : "false");
     b.addEventListener("click", function(){
       walkNormal = false;
@@ -5906,7 +6019,7 @@ function renderWalk(){
   drawT();
   body.appendChild(pw);
 
-  var saveBtn = el("button", "btn primary", "Сохранить в дневник");
+  var saveBtn = el("button", "btn primary", "Сохранить прогулку");
   saveBtn.type = "button";
   saveBtn.addEventListener("click", saveWalk);
   foot.appendChild(saveBtn);
