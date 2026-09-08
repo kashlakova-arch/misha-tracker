@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#FBF6EC">
+<meta name="theme-color" content="#F8F5EF">
 <meta name="description" content="Спокойное наблюдение за здоровьем собаки: ежедневная проверка и дневник самочувствия.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -16,25 +16,30 @@
 <style>
   :root{
     color-scheme: light;
-    --cream:#FBF6EC;
-    --cream-deep:#F4EDDF;
-    --card:#FFFDF8;
-    --ink:#3A362F;
-    --ink-soft:#5D564B;
-    --muted:#8A8172;
-    --line:#E9E0CE;
-    --sage:#7E9471;
-    --sage-deep:#5F7455;
-    --sage-soft:#EBF0E5;
+    --cream:#F8F5EF;
+    --cream-deep:#F3EDE2;
+    --card:#FFFDFC;
+    --ink:#35332F;
+    --ink-soft:#565046;
+    --muted:#777166;
+    --line:#E7DFCF;
+    --sage:#6E8768;
+    --sage-deep:#58715B;
+    --sage-soft:#E7EEE5;
+    --apricot:#D99067;
+    --apricot-soft:#F6E5DA;
+    --sky:#DDE9EC;
     --amber:#C4954A;
     --amber-deep:#9A7231;
     --amber-soft:#F7EEDA;
     --terra:#B4705E;
     --terra-deep:#8E5344;
     --terra-soft:#F5E3DC;
-    --radius:20px;
-    --shadow:0 1px 2px rgba(58,54,47,.05), 0 8px 24px rgba(58,54,47,.06);
+    --radius:22px;
+    --radius-lg:24px;
+    --shadow:0 1px 2px rgba(53,51,47,.05), 0 8px 24px rgba(53,51,47,.06);
     --tap:60px;
+    --nav-h:64px;
   }
 
   *{box-sizing:border-box}
@@ -92,7 +97,7 @@
   .foot{
     padding:12px 20px calc(env(safe-area-inset-bottom) + 20px);
     display:flex;flex-direction:column;gap:10px;
-    background:linear-gradient(to top, var(--cream) 62%, rgba(251,246,236,0));
+    background:linear-gradient(to top, var(--cream) 62%, rgba(248,245,239,0));
     position:sticky;bottom:0;
   }
 
@@ -365,7 +370,7 @@
   input[type="range"]{accent-color:var(--sage-deep);height:28px}
 
   @media print {
-    .top, .foot, .iconbtn { display:none !important; }
+    .top, .foot, .iconbtn, .tabbar, .fab, .sheet-wrap { display:none !important; }
     .screen:not(.active) { display:none !important; }
     .screen.active { display:block !important; }
     body { background:#fff; }
@@ -378,6 +383,74 @@
   @media (prefers-reduced-motion: reduce){
     .fade{animation:none}
     *{transition-duration:.01ms !important}
+  }
+
+  /* ═══ Нижняя навигация (§6) ═══ */
+  .tabbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;
+    max-width:520px;margin:0 auto;
+    height:calc(var(--nav-h) + env(safe-area-inset-bottom));
+    padding:0 6px env(safe-area-inset-bottom);
+    display:flex;align-items:stretch;
+    background:var(--card);
+    border-top:1px solid var(--line);
+    box-shadow:0 -2px 16px rgba(53,51,47,.05);
+  }
+  .tabbar[hidden]{display:none}
+  .tab{
+    flex:1;min-width:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    background:none;border:0;padding:6px 2px;
+    color:var(--muted);font-size:.6875rem;font-weight:600;letter-spacing:.01em;
+    cursor:pointer;
+  }
+  .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .tab.sel{color:var(--sage-deep)}
+  .tab:active{opacity:.55}
+  .fab{
+    position:absolute;left:50%;top:-24px;transform:translateX(-50%);
+    width:58px;height:58px;border-radius:50%;
+    border:4px solid var(--cream);
+    background:var(--sage);color:#fff;
+    font-size:30px;font-weight:400;line-height:1;
+    display:grid;place-items:center;
+    box-shadow:0 8px 20px rgba(88,113,91,.4);
+    cursor:pointer;
+  }
+  .fab:active{transform:translateX(-50%) scale(.94);background:var(--sage-deep)}
+  #app.has-tabbar .body{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px)}
+  #app.has-tabbar .foot{bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:14px}
+
+  /* ═══ Лист быстрых действий — ＋ (§6, §7.1) ═══ */
+  .sheet-wrap{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+  .sheet-wrap[hidden]{display:none}
+  .sheet-backdrop{position:absolute;inset:0;background:rgba(53,51,47,.34);opacity:0;transition:opacity .2s ease}
+  .sheet-wrap.in .sheet-backdrop{opacity:1}
+  .sheet{
+    position:relative;width:100%;max-width:520px;
+    background:var(--card);
+    border-radius:24px 24px 0 0;
+    padding:10px 20px calc(env(safe-area-inset-bottom) + 18px);
+    transform:translateY(100%);transition:transform .24s cubic-bezier(.22,1,.36,1);
+    box-shadow:0 -12px 40px rgba(53,51,47,.16);
+  }
+  .sheet-wrap.in .sheet{transform:translateY(0)}
+  .sheet-grip{width:38px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 10px}
+  .sheet h2{font-size:1rem;color:var(--muted);font-weight:600;margin:2px 4px 6px}
+  .sheet-item{
+    width:100%;min-height:56px;
+    display:flex;align-items:center;gap:14px;
+    background:none;border:0;border-bottom:1px solid var(--line);
+    font-size:1.0625rem;font-weight:600;color:var(--ink);
+    text-align:left;cursor:pointer;
+  }
+  .sheet-item:last-child{border-bottom:0}
+  .sheet-item:active{opacity:.55}
+  .sheet-item .ic{width:36px;height:36px;flex:none;border-radius:12px;background:var(--sage-soft);display:grid;place-items:center}
+  .sheet-item .ic svg{width:19px;height:19px;stroke:var(--sage-deep);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  @media (prefers-reduced-motion: reduce){
+    .sheet{transition:none}
+    .sheet-backdrop{transition:none}
   }
 </style>
 </head>
@@ -819,6 +892,42 @@
     <div class="body" id="qolBody"></div>
     <div class="foot" id="qolFoot"></div>
   </section>
+
+  <!-- ═══ Нижняя навигация (§6) ═══ -->
+  <nav class="tabbar" id="tabbar" hidden>
+    <button class="tab" id="tabHome" type="button">
+      <svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19h12v-8.5"/></svg>
+      <span>Сегодня</span>
+    </button>
+    <button class="tab" id="tabDiary" type="button">
+      <svg viewBox="0 0 24 24"><path d="M5.5 4H19v16H5.5A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4z"/><path d="M8 4v16M11 9h5M11 13h5"/></svg>
+      <span>Журнал</span>
+    </button>
+    <button class="tab" id="tabCal" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>
+      <span>Календарь</span>
+    </button>
+    <button class="tab" id="tabMisha" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="7.5" cy="10" r="1.9"/><circle cx="12" cy="7.5" r="1.9"/><circle cx="16.5" cy="10" r="1.9"/><path d="M12 12.5c-2.6 0-4.4 2-4.4 4.1 0 1.5 1.2 2.3 2.6 2.3.9 0 1.3-.4 1.8-.4s.9.4 1.8.4c1.4 0 2.6-.8 2.6-2.3 0-2.1-1.8-4.1-4.4-4.1z"/></svg>
+      <span>Миша</span>
+    </button>
+    <button class="fab" id="fab" type="button" aria-label="Быстрая запись">+</button>
+  </nav>
+
+  <!-- ═══ Быстрые действия — ＋ (§6, §7.1) ═══ -->
+  <div class="sheet-wrap" id="quickSheet" hidden>
+    <div class="sheet-backdrop" id="quickSheetBg"></div>
+    <div class="sheet" role="dialog" aria-label="Быстрая запись">
+      <div class="sheet-grip"></div>
+      <h2>Что записать?</h2>
+      <button class="sheet-item" id="qaCheck" type="button"><span class="ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>Проверка</button>
+      <button class="sheet-item" id="qaWalk" type="button"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="6" r="2"/><path d="M8 8v5l-2 6M8 13l4 2 2 5M12 9l4-1"/></svg></span>После прогулки</button>
+      <button class="sheet-item" id="qaWeight" type="button"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 8h12l2 12H4z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg></span>Записать вес</button>
+      <button class="sheet-item" id="qaMed" type="button"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3.5" y="8.5" width="17" height="7" rx="3.5"/><path d="M12 8.5v7"/></svg></span>Добавить лекарство</button>
+      <button class="sheet-item" id="qaVisit" type="button"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a7 7 0 0 1 14 0c0 5.5-7 10-7 10z"/><path d="M12 8v5M9.5 10.5h5"/></svg></span>Записать визит</button>
+      <button class="sheet-item" id="qaTick" type="button"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/></svg></span>Отметить укус клеща</button>
+    </div>
+  </div>
 
 </div>
 
@@ -1583,9 +1692,35 @@ function show(id){
   for(var i=0;i<screens.length;i++) screens[i].classList.remove("active");
   var node = document.getElementById(id);
   node.classList.add("active");
+  syncTabbar(id);
   window.scrollTo(0, 0);
   var body = node.querySelector(".body");
   if(body){ body.classList.remove("fade"); void body.offsetWidth; body.classList.add("fade"); }
+}
+
+/* Нижняя навигация видна только на четырёх корневых экранах (§6).
+   На онбординге («Знакомство», profile ещё null) — прячем. */
+var TAB_OF = { "s-home":"tabHome", "s-diary":"tabDiary", "s-calendar":"tabCal", "s-setup":"tabMisha" };
+
+function syncTabbar(id){
+  var bar = document.getElementById("tabbar");
+  if(!bar) return;
+  var app = document.getElementById("app");
+  var want = TAB_OF[id];
+  if(want === "tabMisha" && !profile) want = null;
+  if(want){
+    bar.hidden = false;
+    app.classList.add("has-tabbar");
+    var tabs = bar.querySelectorAll(".tab");
+    for(var i=0;i<tabs.length;i++){
+      if(tabs[i].id === want) tabs[i].classList.add("sel");
+      else tabs[i].classList.remove("sel");
+    }
+  }else{
+    bar.hidden = true;
+    app.classList.remove("has-tabbar");
+  }
+  closeQuickSheet();
 }
 
 /* ══════════════════ Экран 1: профиль ══════════════════ */
@@ -1815,6 +1950,34 @@ $("#setupSave").addEventListener("click", function(){
 
 $("#setupClose").addEventListener("click", function(){ renderHome(); show("s-home"); });
 $("#toSettings").addEventListener("click", function(){ renderSetup(profile); show("s-setup"); });
+
+/* ══════════════════ Нижняя навигация + быстрые действия (§6) ══════════════════ */
+
+$("#tabHome").addEventListener("click", function(){ renderHome(); show("s-home"); });
+$("#tabDiary").addEventListener("click", function(){ renderDiary(); show("s-diary"); });
+$("#tabCal").addEventListener("click", function(){ renderCalendar(); show("s-calendar"); });
+$("#tabMisha").addEventListener("click", function(){ renderSetup(profile); show("s-setup"); });
+
+function openQuickSheet(){
+  var s = $("#quickSheet");
+  s.hidden = false;
+  void s.offsetWidth;
+  s.classList.add("in");
+}
+function closeQuickSheet(){
+  var s = $("#quickSheet");
+  if(!s || s.hidden) return;
+  s.classList.remove("in");
+  window.setTimeout(function(){ if(!s.classList.contains("in")) s.hidden = true; }, 240);
+}
+$("#fab").addEventListener("click", openQuickSheet);
+$("#quickSheetBg").addEventListener("click", closeQuickSheet);
+$("#qaCheck").addEventListener("click", function(){ closeQuickSheet(); startCheck(); });
+$("#qaWalk").addEventListener("click", function(){ closeQuickSheet(); startWalk(); });
+$("#qaWeight").addEventListener("click", function(){ closeQuickSheet(); show("s-weight"); openWeightForm(null); });
+$("#qaMed").addEventListener("click", function(){ closeQuickSheet(); show("s-meds"); openMedForm(null); });
+$("#qaVisit").addEventListener("click", function(){ closeQuickSheet(); renderCalendar(); show("s-calendar"); openVisitForm(null, {}); });
+$("#qaTick").addEventListener("click", function(){ closeQuickSheet(); show("s-tick"); openTickForm(null); });
 
 $("#exportBtn").addEventListener("click", function(){
   var payload = {
