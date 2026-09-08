@@ -1,8 +1,9 @@
 /* Misha Health Tracker — офлайн-кэш. Данные приложения лежат в IndexedDB, здесь только файлы приложения. */
-var CACHE = "misha-v27";
+var CACHE = "misha-v28";
 /* Только обработанные ассеты. Исходники из assets/source/ не кэшируем. */
 var ASSETS = [
   "./", "./index.html", "./manifest.json", "./assets/misha.webp",
+  "./assets/misha-home.jpg", "./assets/misha-outside.jpg", "./assets/misha-portrait.jpg",
   "./icon.svg", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon-180.png"
 ];
 
