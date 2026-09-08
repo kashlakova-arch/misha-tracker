@@ -752,7 +752,7 @@
   #s-diary .top h1,#s-calendar .top h1{font-size:2rem;font-weight:900;line-height:1}
   #s-diary .top h1::after,#s-calendar .top h1::after,#s-meds .top h1::after,#s-tick .top h1::after{content:"♡";color:var(--apricot);font-weight:600;margin-left:5px}
   #s-diary .top .sub,#s-calendar .top .sub,#s-meds .top .sub,#s-tick .top .sub,#s-walk .top .sub{font-size:1rem;color:var(--sage-deep);font-weight:600}
-  #s-diary .screen-kicker{position:absolute;right:18px;top:88px;width:126px;text-align:right;font-size:1rem;color:var(--sage-deep)}
+  #s-diary .screen-kicker{position:static;width:auto;text-align:center;font-size:1rem;color:var(--sage-deep);margin:-6px 0 1px;transform:none}
   #s-calendar .screen-kicker{position:static;width:auto;text-align:center;font-size:1rem;color:var(--sage-deep);margin:-6px 0 1px;transform:none}
 
   #s-diary .chips,#s-calendar .seg,#s-meds .chips{background:rgba(255,253,252,.92);border:1px solid var(--line);border-radius:18px;padding:6px;box-shadow:var(--shadow);gap:5px}
@@ -769,6 +769,10 @@
   #s-diary .feed-ic svg{width:22px;height:22px}
   #s-diary .feed-t{font-size:1rem;font-weight:800}
   #s-diary .feed-s{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #s-diary .foot:empty{display:none}
+  .journal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+  .journal-actions .btn{min-height:54px;border-radius:16px;padding:12px 10px;font-size:.88rem;box-shadow:none}
+  @media (max-width:360px){.journal-actions{grid-template-columns:1fr}}
   .feed-chev{width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);flex:none}
 
   .page-art{position:relative;min-height:190px;margin:14px -20px -16px;overflow:hidden;background:linear-gradient(145deg,var(--sage-soft),var(--apricot-soft))}
@@ -1255,6 +1259,7 @@
       <div class="screen-kicker">Мишины дни — большие и маленькие</div>
       <div class="chips" id="diaryChips"></div>
       <div class="feed" id="diaryList"></div>
+      <div class="journal-actions" id="diaryActions"></div>
       <div class="page-art diary-photo" aria-hidden="true">
         <div class="script">Маленькие события — большая забота ♡</div>
         <img src="assets/misha-home.jpg" alt="">
@@ -2280,7 +2285,7 @@ function syncTabbar(id){
   if(want){
     bar.hidden = false;
     app.classList.add("has-tabbar");
-    if(fab) fab.hidden = !(id === "s-diary" || id === "s-meds");
+    if(fab) fab.hidden = (id !== "s-meds");
     var tabs = bar.querySelectorAll(".tab");
     for(var i=0;i<tabs.length;i++){
       if(tabs[i].id === want) tabs[i].classList.add("sel");
@@ -4073,8 +4078,9 @@ function openEntry(entry){
 function renderDiary(){
   var chips = $("#diaryChips");
   var list = $("#diaryList");
+  var actions = $("#diaryActions");
   var foot = $("#diaryFoot");
-  clear(chips); clear(list); clear(foot);
+  clear(chips); clear(list); clear(actions); clear(foot);
 
   DIARY_FILTERS.forEach(function(f){
     var b = el("button", "chip" + (diaryFilter === f.v ? " sel" : ""), f.t);
@@ -4115,10 +4121,15 @@ function renderDiary(){
     });
   }
 
+  var addBtn = el("button", "btn primary", "＋ Добавить запись");
+  addBtn.type = "button";
+  addBtn.addEventListener("click", openQuickSheet);
+  actions.appendChild(addBtn);
+
   var reportBtn = el("button", "btn soft", "Отчёт ветеринару");
   reportBtn.type = "button";
   reportBtn.addEventListener("click", function(){ startReport(); });
-  foot.appendChild(reportBtn);
+  actions.appendChild(reportBtn);
 }
 
 function plural(n, one, few, many){
